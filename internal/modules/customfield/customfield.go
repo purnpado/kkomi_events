@@ -168,3 +168,52 @@ func (s *Service) SaveValue(fieldId, recordId int64, value string) error {
 	s.bus.Publish("customfield", EventValueChanged, map[string]any{"fieldId": fieldId, "recordId": recordId})
 	return nil
 }
+
+// GetValuesForRecords 는 여러 레코드의 사용자 항목 값들을 한 번에 가져옵니다.
+// map[recordId]map[fieldId]value 형식으로 반환합니다.
+func (s *Service) GetValuesForRecords(recordIds []int64) (map[int64]map[int64]string, error) {
+	result := make(map[int64]map[int64]string)
+	if len(recordIds) == 0 {
+		return result, nil
+	}
+
+	// 쿼리 파라미터 빌드
+	query := `SELECT record_id, field_id, val FROM custom_field_value WHERE record_id IN (`
+	args := make([]any, len(recordIds))
+	for i, id := range recordIds {
+		if i > 0 {
+			query += ","
+		}
+		query += "?"
+		args[i] = id
+	}
+	query += ")"
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var recId, fId int64
+		var val string
+		if err := rows.Scan(&recId, &fId, &val); err == nil {
+			if result[recId] == nil {
+				result[recId] = make(map[int64]string)
+			}
+			result[recId][fId] = val
+		}
+	}
+	return result, nil
+}
+
+// SaveValuesForRecord 는 특정 레코드에 속한 여러 필드 값들을 한 번에 저장합니다.
+func (s *Service) SaveValuesForRecord(recordId int64, values map[int64]string) error {
+	for fId, val := range values {
+		if err := s.SaveValue(fId, recordId, val); err != nil {
+			return err
+		}
+	}
+	return nil
+}

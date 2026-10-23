@@ -15,6 +15,7 @@ import (
 	"kkomi-events/internal/modules/customfield"
 	"kkomi-events/internal/modules/dashboard"
 	"kkomi-events/internal/modules/eventtype"
+	"kkomi-events/internal/modules/excelio"
 	"kkomi-events/internal/modules/matching"
 	"kkomi-events/internal/modules/myevent"
 	"kkomi-events/internal/modules/sent"
@@ -42,6 +43,7 @@ func main() {
 		customfield.New(),
 		dashboard.New(),
 		backup.New(),
+		excelio.New(),
 	)
 	// ────────────────────────────────────────────────────
 

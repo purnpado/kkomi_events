@@ -7,9 +7,16 @@ const SECTION_TITLES = { main: '장부', tools: '도구', system: '시스템' };
 
 export default function App() {
   const modules = getModules().filter((m) => m.Page);
-  const [activeId, setActiveId] = useState(modules[0]?.id);
+  const [activeId, setActiveId] = useState(() => {
+    return localStorage.getItem('kkomi_active_tab') || modules[0]?.id;
+  });
   const active = modules.find((m) => m.id === activeId);
   const sections = ['main', 'tools', 'system'].filter((s) => modules.some((m) => m.section === s));
+
+  const changeTab = (id) => {
+    setActiveId(id);
+    localStorage.setItem('kkomi_active_tab', id);
+  };
 
   // nav.goto 이벤트 수신 시 해당 화면으로 자동 이동
   useBusEvent('nav.goto', (e) => {
@@ -43,7 +50,7 @@ export default function App() {
                     id={`nav-${m.id}`}
                     className="nav-item"
                     aria-current={m.id === activeId ? 'page' : undefined}
-                    onClick={() => setActiveId(m.id)}
+                    onClick={() => changeTab(m.id)}
                   >
                     <span className="nav-icon">{m.icon}</span>
                     {m.title}

@@ -3,8 +3,8 @@
    모든 화면은 이 변수만 사용합니다.
    ───────────────────────────────────────────── */
 :root {
-  /* 글꼴 */
-  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif;
+  /* 글꼴: 프리텐다드 가변 폰트 1순위 */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --font-scale: 1;
 
   /* 브랜드 색: 따뜻한 살구 + 깊은 자두 */

@@ -8,7 +8,8 @@ import Modal from '../../ui/Modal';
 import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import EventTypeModal from './EventTypeModal';
-import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles } from 'lucide-react';
+import CustomFieldModal from '../../ui/CustomFieldModal';
+import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download } from 'lucide-react';
 
 const RELATION_OPTIONS = [
   { value: '친구', label: '친구' },
@@ -36,6 +37,11 @@ export default function MyEventPage() {
   const [activeEventId, setActiveEventId] = useState(null);
   const [receivedList, setReceivedList] = useState([]);
   const [search, setSearch] = useState('');
+
+  // 사용자 맞춤 항목 상태
+  const [customFields, setCustomFields] = useState([]);
+  const [customValues, setCustomValues] = useState({}); // { [recordId]: { [fieldId]: val } }
+  const [customFieldModalOpen, setCustomFieldModalOpen] = useState(false);
 
   // 설정값 (함께 사용 모드 여부)
   const [isSharedMode, setIsSharedMode] = useState(false);
@@ -67,6 +73,7 @@ export default function MyEventPage() {
     isThanked: false,
     memberSide: '본인',
     notes: '',
+    customValues: {},
   });
 
   // 1. 탭 목록 불러오기
@@ -81,6 +88,16 @@ export default function MyEventPage() {
       console.error(err);
     }
   }, [activeTypeId]);
+
+  // 1-1. 맞춤 항목 정의 불러오기
+  const loadCustomFields = useCallback(async () => {
+    try {
+      const fields = await api.customfield.listFields('myevent');
+      setCustomFields(fields || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
   // 2. 행사 목록 불러오기
   const loadEvents = useCallback(async () => {
@@ -102,15 +119,24 @@ export default function MyEventPage() {
     }
   }, [activeTypeId, activeEventId]);
 
-  // 3. 받은 내역 불러오기
+  // 3. 받은 내역 및 해당 맞춤 항목 값 불러오기
   const loadReceived = useCallback(async () => {
     if (!activeEventId) {
       setReceivedList([]);
+      setCustomValues({});
       return;
     }
     try {
       const list = await api.myevent.listReceived(activeEventId, search);
       setReceivedList(list || []);
+
+      if (list && list.length > 0) {
+        const ids = list.map((item) => item.id);
+        const values = await api.customfield.getValuesForRecords(ids);
+        setCustomValues(values || {});
+      } else {
+        setCustomValues({});
+      }
     } catch (err) {
       console.error(err);
     }
@@ -118,10 +144,11 @@ export default function MyEventPage() {
 
   useEffect(() => {
     loadTypes();
+    loadCustomFields();
     api.settings.get('usage_mode').then((val) => {
       setIsSharedMode(val === 'shared');
     });
-  }, [loadTypes]);
+  }, [loadTypes, loadCustomFields]);
 
   useEffect(() => {
     loadEvents();
@@ -142,6 +169,10 @@ export default function MyEventPage() {
   useBusEvent('received.*', () => {
     loadReceived();
     loadEvents(); // 합계 갱신
+  });
+  useBusEvent('customfield.*', () => {
+    loadCustomFields();
+    loadReceived();
   });
 
   const activeEvent = events.find((e) => e.id === activeEventId);
@@ -239,6 +270,7 @@ export default function MyEventPage() {
       isThanked: false,
       memberSide: '신랑측/본인',
       notes: '',
+      customValues: {},
     });
     setReceivedModalOpen(true);
   };
@@ -254,6 +286,7 @@ export default function MyEventPage() {
       isThanked: item.isThanked,
       memberSide: item.memberSide,
       notes: item.notes,
+      customValues: { ...(customValues[item.id] || {}) },
     });
     setReceivedModalOpen(true);
   };
@@ -264,6 +297,7 @@ export default function MyEventPage() {
       return;
     }
     try {
+      let savedId = receivedForm.id;
       if (receivedForm.id) {
         await api.myevent.updateReceived(
           receivedForm.id,
@@ -278,7 +312,7 @@ export default function MyEventPage() {
         );
         emit('toast.show', { title: '내역 수정', message: '받은 내역이 수정되었습니다.', type: 'success' });
       } else {
-        await api.myevent.createReceived(
+        const res = await api.myevent.createReceived(
           activeEventId,
           receivedForm.name.trim(),
           receivedForm.phone,
@@ -289,8 +323,20 @@ export default function MyEventPage() {
           receivedForm.memberSide,
           receivedForm.notes
         );
+        savedId = res?.id;
         emit('toast.show', { title: '등록 완료', message: `${receivedForm.name} 님의 축의/부의금이 기록되었습니다.`, type: 'success' });
       }
+
+      // 맞춤 항목 값 저장
+      if (savedId && receivedForm.customValues && Object.keys(receivedForm.customValues).length > 0) {
+        // fieldId를 숫자로 변환하여 저장
+        const valsToSave = {};
+        for (const [k, v] of Object.entries(receivedForm.customValues)) {
+          valsToSave[Number(k)] = String(v);
+        }
+        await api.customfield.saveValuesForRecord(savedId, valsToSave);
+      }
+
       setReceivedModalOpen(false);
       loadReceived();
       loadEvents();
@@ -320,6 +366,69 @@ export default function MyEventPage() {
     }
   };
 
+  // ── 엑셀 내보내기 / 가져오기 / 인쇄 ──
+  const handleExportExcel = async () => {
+    if (!activeEventId) {
+      emit('toast.show', { title: '행사 필요', message: '먼저 행사를 선택해주세요.', type: 'error' });
+      return;
+    }
+    try {
+      const savedPath = await api.excelio.exportMyEvent(activeEventId);
+      if (savedPath) {
+        emit('toast.show', {
+          title: '엑셀 내보내기 완료',
+          message: `파일이 성공적으로 저장되었습니다:\n${savedPath}`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', { title: '내보내기 실패', message: String(err), type: 'error' });
+    }
+  };
+
+  const handleImportExcel = async () => {
+    if (!activeEventId) {
+      emit('toast.show', { title: '행사 필요', message: '먼저 행사를 선택해주세요.', type: 'error' });
+      return;
+    }
+    try {
+      const res = await api.excelio.importReceived(activeEventId);
+      if (res) {
+        emit('toast.show', {
+          title: '가져오기 완료',
+          message: `총 ${res.totalRows}행 중 ${res.successRows}건이 등록되었습니다.`,
+          type: 'success',
+        });
+        if (res.errors && res.errors.length > 0) {
+          alert('일부 행을 가져오지 못했습니다:\n' + res.errors.slice(0, 5).join('\n'));
+        }
+        loadReceived();
+        loadEvents();
+      }
+    } catch (err) {
+      emit('toast.show', { title: '가져오기 실패', message: String(err), type: 'error' });
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const savedPath = await api.excelio.downloadTemplate();
+      if (savedPath) {
+        emit('toast.show', {
+          title: '양식 다운로드 완료',
+          message: `가져오기 양식이 저장되었습니다:\n${savedPath}`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', { title: '다운로드 실패', message: String(err), type: 'error' });
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <>
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -327,14 +436,24 @@ export default function MyEventPage() {
           <h1 className="page-title">나의 경조사 (받은 돈)</h1>
           <p className="page-desc">결혼, 돌잔치, 장례식 등 내가 주최한 행사에 들어온 축의금·부의금을 정리합니다.</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => setTypeModalOpen(true)}
-          title="탭 종류 추가 및 순서 변경"
-        >
-          <Settings size={16} /> 탭 목록 관리
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setCustomFieldModalOpen(true)}
+            title="원하는 맞춤 항목(식권 매수, 방명록 번호 등) 자유롭게 추가"
+          >
+            <SlidersHorizontal size={16} /> 맞춤 항목 관리
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setTypeModalOpen(true)}
+            title="탭 종류 추가 및 순서 변경"
+          >
+            <Settings size={16} /> 탭 목록 관리
+          </button>
+        </div>
       </header>
 
       {/* 탭 헤더 바 */}
@@ -436,8 +555,8 @@ export default function MyEventPage() {
       {/* 받은 내역 목록 섹션 */}
       {activeEvent ? (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
-            <div style={{ position: 'relative', width: 280 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: 260 }}>
               <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--fg-muted)' }} />
               <input
                 type="text"
@@ -448,9 +567,44 @@ export default function MyEventPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <button type="button" className="btn" onClick={openCreateReceived}>
-              <UserPlus size={16} /> 받은 내역 등록
-            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-chip"
+                onClick={handleDownloadTemplate}
+                title="엑셀 대량 등록용 표준 양식 파일 다운로드"
+              >
+                <Download size={14} /> 양식 다운로드
+              </button>
+              <button
+                type="button"
+                className="btn-chip"
+                onClick={handleImportExcel}
+                title="기존 엑셀 장부 파일(.xlsx)에서 대량으로 가져오기"
+              >
+                <Upload size={14} /> 엑셀 가져오기
+              </button>
+              <button
+                type="button"
+                className="btn-chip"
+                onClick={handleExportExcel}
+                title="현재 받은 내역 장부를 서식 있는 엑셀 파일로 저장"
+              >
+                <FileSpreadsheet size={14} /> 엑셀 내보내기
+              </button>
+              <button
+                type="button"
+                className="btn-chip"
+                onClick={handlePrint}
+                title="장부 인쇄 또는 PDF 파일로 저장"
+              >
+                <Printer size={14} /> 인쇄/PDF
+              </button>
+              <button type="button" className="btn" onClick={openCreateReceived} style={{ marginLeft: 4 }}>
+                <UserPlus size={16} /> 받은 내역 등록
+              </button>
+            </div>
           </div>
 
           <div className="table-container">
@@ -464,6 +618,11 @@ export default function MyEventPage() {
                   <th style={{ width: 110 }}>수납 방법</th>
                   {isSharedMode && <th style={{ width: 100 }}>구분</th>}
                   <th style={{ width: 90, textAlign: 'center' }}>답례 완료</th>
+                  {customFields.map((f) => (
+                    <th key={f.id} style={{ minWidth: 90 }}>
+                      {f.fieldName}
+                    </th>
+                  ))}
                   <th>비고</th>
                   <th style={{ width: 100, textAlign: 'center' }}>관리</th>
                 </tr>
@@ -471,7 +630,7 @@ export default function MyEventPage() {
               <tbody>
                 {receivedList.length === 0 ? (
                   <tr>
-                    <td colSpan={isSharedMode ? 9 : 8} className="table-empty">
+                    <td colSpan={(isSharedMode ? 9 : 8) + customFields.length} className="table-empty">
                       {search ? '검색된 내역이 없습니다.' : '아직 등록된 받은 내역이 없습니다. [받은 내역 등록] 버튼을 눌러 추가하세요.'}
                     </td>
                   </tr>
@@ -498,6 +657,20 @@ export default function MyEventPage() {
                           {item.isThanked ? '완료' : '미답례'}
                         </button>
                       </td>
+                      {customFields.map((f) => {
+                        const val = customValues[item.id]?.[f.id] || '';
+                        return (
+                          <td key={f.id}>
+                            {f.fieldType === 'checkbox' ? (
+                              <span className={`badge ${val === 'true' || val === '1' ? 'badge-ok' : ''}`}>
+                                {val === 'true' || val === '1' ? '예' : '아니오'}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.88rem' }}>{val || '-'}</span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
@@ -711,6 +884,108 @@ export default function MyEventPage() {
           </label>
         </div>
 
+        {/* 사용자 맞춤 추가 항목 폼 필드 */}
+        {customFields.length > 0 && (
+          <div
+            style={{
+              padding: '12px 14px',
+              background: 'var(--bg-sunken)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: 'var(--brand-700)',
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <SlidersHorizontal size={14} /> 맞춤 추가 항목
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+              {customFields.map((f) => (
+                <div key={f.id} className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>
+                    {f.fieldName}
+                  </label>
+                  {f.fieldType === 'checkbox' ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={receivedForm.customValues?.[f.id] === 'true' || receivedForm.customValues?.[f.id] === '1'}
+                        onChange={(e) =>
+                          setReceivedForm({
+                            ...receivedForm,
+                            customValues: {
+                              ...receivedForm.customValues,
+                              [f.id]: e.target.checked ? 'true' : 'false',
+                            },
+                          })
+                        }
+                        style={{ width: 18, height: 18 }}
+                      />
+                      <span style={{ fontSize: '0.88rem' }}>체크 (예)</span>
+                    </label>
+                  ) : f.fieldType === 'number' ? (
+                    <input
+                      type="number"
+                      className="input-text"
+                      placeholder={`${f.fieldName} 입력`}
+                      value={receivedForm.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setReceivedForm({
+                          ...receivedForm,
+                          customValues: {
+                            ...receivedForm.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : f.fieldType === 'date' ? (
+                    <input
+                      type="date"
+                      className="input-text"
+                      value={receivedForm.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setReceivedForm({
+                          ...receivedForm,
+                          customValues: {
+                            ...receivedForm.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      className="input-text"
+                      placeholder={`${f.fieldName} 입력`}
+                      value={receivedForm.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setReceivedForm({
+                          ...receivedForm,
+                          customValues: {
+                            ...receivedForm.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="form-group">
           <label className="form-label">비고</label>
           <input
@@ -731,6 +1006,14 @@ export default function MyEventPage() {
           </button>
         </div>
       </Modal>
+
+      {/* 맞춤 항목 관리 모달 */}
+      <CustomFieldModal
+        open={customFieldModalOpen}
+        onOpenChange={setCustomFieldModalOpen}
+        targetMenu="myevent"
+        targetTitle="나의 경조사"
+      />
     </>
   );
 }

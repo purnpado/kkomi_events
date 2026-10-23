@@ -1,5 +1,5 @@
 /* 기본 스타일 + 화면 틀(레이아웃) */
-@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import 'pretendard/dist/web/variable/pretendardvariable.css';
 @import './tokens.css';
 
 *,
@@ -693,4 +693,79 @@ textarea.input-text {
   from { opacity: 1; transform: translateX(0); }
   to { opacity: 0; transform: translateX(100%); }
 }
+
+/* ── 인쇄 및 PDF 출력 전용 서식 ── */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+
+  .sidebar,
+  button,
+  .btn,
+  .btn-chip,
+  .tabs-header-bar,
+  .toast-viewport,
+  .dialog-overlay,
+  .dialog-content,
+  input,
+  select,
+  .no-print {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block !important;
+  }
+
+  .main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    background: white !important;
+    page-break-inside: avoid;
+    margin-bottom: 15px !important;
+  }
+
+  .table-container {
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .data-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .data-table th,
+  .data-table td {
+    border: 1px solid #666 !important;
+    color: black !important;
+    padding: 6px 8px !important;
+    font-size: 10pt !important;
+  }
+
+  .data-table th {
+    background: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
+  .page-title {
+    font-size: 18pt !important;
+    color: black !important;
+  }
+
+  .badge {
+    border: 1px solid #999 !important;
+    background: transparent !important;
+    color: black !important;
+  }
+}
+
 

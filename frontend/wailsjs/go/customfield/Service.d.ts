@@ -8,6 +8,10 @@ export function DeleteField(arg1:number):Promise<void>;
 
 export function GetValuesForRecord(arg1:number):Promise<Record<number, string>>;
 
+export function GetValuesForRecords(arg1:Array<number>):Promise<Record<number, Record<number, string>>>;
+
 export function ListFields(arg1:string):Promise<Array<customfield.CustomField>>;
 
 export function SaveValue(arg1:number,arg2:number,arg3:string):Promise<void>;
+
+export function SaveValuesForRecord(arg1:number,arg2:Record<number, string>):Promise<void>;

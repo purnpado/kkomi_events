@@ -6,7 +6,8 @@ import { formatMoney, formatPhone, formatDate } from '../../core/format';
 import Modal from '../../ui/Modal';
 import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
-import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2 } from 'lucide-react';
+import CustomFieldModal from '../../ui/CustomFieldModal';
+import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer } from 'lucide-react';
 
 const RELATION_OPTIONS = [
   { value: '친구', label: '친구' },
@@ -34,6 +35,11 @@ export default function SentPage() {
   const [search, setSearch] = useState('');
   const [isSharedMode, setIsSharedMode] = useState(false);
 
+  // 사용자 맞춤 항목 상태
+  const [customFields, setCustomFields] = useState([]);
+  const [customValues, setCustomValues] = useState({}); // { [recordId]: { [fieldId]: val } }
+  const [customFieldModalOpen, setCustomFieldModalOpen] = useState(false);
+
   // 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
   const [hintMessage, setHintMessage] = useState('');
@@ -51,6 +57,7 @@ export default function SentPage() {
     attended: true,
     memberSide: '본인',
     notes: '',
+    customValues: {},
   });
 
   const loadTypes = useCallback(async () => {
@@ -62,10 +69,27 @@ export default function SentPage() {
     }
   }, []);
 
+  const loadCustomFields = useCallback(async () => {
+    try {
+      const fields = await api.customfield.listFields('sent');
+      setCustomFields(fields || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   const loadSent = useCallback(async () => {
     try {
       const list = await api.sent.list(selectedTypeId, search);
       setSentList(list || []);
+
+      if (list && list.length > 0) {
+        const ids = list.map((item) => item.id);
+        const values = await api.customfield.getValuesForRecords(ids);
+        setCustomValues(values || {});
+      } else {
+        setCustomValues({});
+      }
     } catch (err) {
       console.error(err);
     }
@@ -73,14 +97,19 @@ export default function SentPage() {
 
   useEffect(() => {
     loadTypes();
+    loadCustomFields();
     api.settings.get('usage_mode').then((val) => setIsSharedMode(val === 'shared'));
-  }, [loadTypes]);
+  }, [loadTypes, loadCustomFields]);
 
   useEffect(() => {
     loadSent();
   }, [loadSent]);
 
   useBusEvent(['sent.*', 'eventtype.*', 'received.*'], () => {
+    loadSent();
+  });
+  useBusEvent('customfield.*', () => {
+    loadCustomFields();
     loadSent();
   });
 
@@ -113,6 +142,7 @@ export default function SentPage() {
       attended: true,
       memberSide: '본인',
       notes: '',
+      customValues: {},
     });
     setModalOpen(true);
   };
@@ -131,6 +161,7 @@ export default function SentPage() {
       attended: item.attended,
       memberSide: item.memberSide,
       notes: item.notes,
+      customValues: { ...(customValues[item.id] || {}) },
     });
     setModalOpen(true);
     if (item.name) {
@@ -145,6 +176,7 @@ export default function SentPage() {
       return;
     }
     try {
+      let savedId = form.id;
       if (form.id) {
         await api.sent.update(
           form.id,
@@ -161,7 +193,7 @@ export default function SentPage() {
         );
         emit('toast.show', { title: '수정 완료', message: '보낸 내역이 수정되었습니다.', type: 'success' });
       } else {
-        await api.sent.create(
+        const res = await api.sent.create(
           form.name.trim(),
           form.phone,
           form.relationship,
@@ -173,8 +205,19 @@ export default function SentPage() {
           form.memberSide,
           form.notes
         );
+        savedId = res?.id;
         emit('toast.show', { title: '등록 완료', message: `${form.name} 님에게 보낸 경조사비가 등록되었습니다.`, type: 'success' });
       }
+
+      // 맞춤 항목 값 저장
+      if (savedId && form.customValues && Object.keys(form.customValues).length > 0) {
+        const valsToSave = {};
+        for (const [k, v] of Object.entries(form.customValues)) {
+          valsToSave[Number(k)] = String(v);
+        }
+        await api.customfield.saveValuesForRecord(savedId, valsToSave);
+      }
+
       setModalOpen(false);
       loadSent();
     } catch (err) {
@@ -193,18 +236,63 @@ export default function SentPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const savedPath = await api.excelio.exportSent(selectedTypeId);
+      if (savedPath) {
+        emit('toast.show', {
+          title: '엑셀 내보내기 완료',
+          message: `파일이 성공적으로 저장되었습니다:\n${savedPath}`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', { title: '내보내기 실패', message: String(err), type: 'error' });
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const totalAmount = sentList.reduce((acc, cur) => acc + cur.amount, 0);
 
   return (
     <>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="page-title">타인의 경조사 (보낸 돈)</h1>
           <p className="page-desc">지인, 동료, 친척 등의 결혼식, 장례식 등에 보낸 경조사비 지출을 기록합니다.</p>
         </div>
-        <button type="button" className="btn" onClick={openCreate}>
-          <Send size={16} /> 보낸 내역 등록
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={handleExportExcel}
+            title="현재 목록을 서식 있는 엑셀 파일로 저장"
+          >
+            <FileSpreadsheet size={16} /> 엑셀 내보내기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={handlePrint}
+            title="장부 인쇄 또는 PDF 파일로 저장"
+          >
+            <Printer size={16} /> 인쇄/PDF
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setCustomFieldModalOpen(true)}
+            title="타인 경조사 맞춤 항목(장소 구분, 답례품 수령 여부 등) 자유롭게 설정"
+          >
+            <SlidersHorizontal size={16} /> 맞춤 항목 관리
+          </button>
+          <button type="button" className="btn" onClick={openCreate}>
+            <Send size={16} /> 보낸 내역 등록
+          </button>
+        </div>
       </header>
 
       {/* 요약 카드 */}
@@ -270,6 +358,11 @@ export default function SentPage() {
               <th style={{ width: 110 }}>지출 수단</th>
               <th style={{ width: 90, textAlign: 'center' }}>참석 여부</th>
               {isSharedMode && <th style={{ width: 100 }}>구분</th>}
+              {customFields.map((f) => (
+                <th key={f.id} style={{ minWidth: 90 }}>
+                  {f.fieldName}
+                </th>
+              ))}
               <th>비고</th>
               <th style={{ width: 100, textAlign: 'center' }}>관리</th>
             </tr>
@@ -277,7 +370,7 @@ export default function SentPage() {
           <tbody>
             {sentList.length === 0 ? (
               <tr>
-                <td colSpan={isSharedMode ? 11 : 10} className="table-empty">
+                <td colSpan={(isSharedMode ? 11 : 10) + customFields.length} className="table-empty">
                   {search ? '검색된 내역이 없습니다.' : '등록된 보낸 내역이 없습니다. [보낸 내역 등록] 버튼을 눌러 추가해보세요.'}
                 </td>
               </tr>
@@ -301,6 +394,20 @@ export default function SentPage() {
                     </span>
                   </td>
                   {isSharedMode && <td><span className="badge">{item.memberSide || '공통'}</span></td>}
+                  {customFields.map((f) => {
+                    const val = customValues[item.id]?.[f.id] || '';
+                    return (
+                      <td key={f.id}>
+                        {f.fieldType === 'checkbox' ? (
+                          <span className={`badge ${val === 'true' || val === '1' ? 'badge-ok' : ''}`}>
+                            {val === 'true' || val === '1' ? '예' : '아니오'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.88rem' }}>{val || '-'}</span>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
@@ -461,6 +568,108 @@ export default function SentPage() {
           </div>
         )}
 
+        {/* 사용자 맞춤 추가 항목 폼 필드 */}
+        {customFields.length > 0 && (
+          <div
+            style={{
+              padding: '12px 14px',
+              background: 'var(--bg-sunken)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: 'var(--brand-700)',
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <SlidersHorizontal size={14} /> 맞춤 추가 항목
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+              {customFields.map((f) => (
+                <div key={f.id} className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>
+                    {f.fieldName}
+                  </label>
+                  {f.fieldType === 'checkbox' ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.customValues?.[f.id] === 'true' || form.customValues?.[f.id] === '1'}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            customValues: {
+                              ...form.customValues,
+                              [f.id]: e.target.checked ? 'true' : 'false',
+                            },
+                          })
+                        }
+                        style={{ width: 18, height: 18 }}
+                      />
+                      <span style={{ fontSize: '0.88rem' }}>체크 (예)</span>
+                    </label>
+                  ) : f.fieldType === 'number' ? (
+                    <input
+                      type="number"
+                      className="input-text"
+                      placeholder={`${f.fieldName} 입력`}
+                      value={form.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          customValues: {
+                            ...form.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : f.fieldType === 'date' ? (
+                    <input
+                      type="date"
+                      className="input-text"
+                      value={form.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          customValues: {
+                            ...form.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      className="input-text"
+                      placeholder={`${f.fieldName} 입력`}
+                      value={form.customValues?.[f.id] || ''}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          customValues: {
+                            ...form.customValues,
+                            [f.id]: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="form-group">
           <label className="form-label">비고</label>
           <input
@@ -481,6 +690,14 @@ export default function SentPage() {
           </button>
         </div>
       </Modal>
+
+      {/* 맞춤 항목 관리 모달 */}
+      <CustomFieldModal
+        open={customFieldModalOpen}
+        onOpenChange={setCustomFieldModalOpen}
+        targetMenu="sent"
+        targetTitle="타인 경조사"
+      />
     </>
   );
 }

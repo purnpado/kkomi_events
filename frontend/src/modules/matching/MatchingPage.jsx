@@ -3,7 +3,7 @@ import { api } from '../../core/api';
 import { useBusEvent } from '../../core/hooks';
 import { formatMoney, formatPhone, formatDate } from '../../core/format';
 import Modal from '../../ui/Modal';
-import { Search, ArrowLeftRight, Clock, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { Search, ArrowLeftRight, Clock, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Users, Printer } from 'lucide-react';
 
 export default function MatchingPage() {
   const [summaries, setSummaries] = useState([]);
@@ -52,11 +52,21 @@ export default function MatchingPage() {
 
   return (
     <>
-      <header className="page-header">
-        <h1 className="page-title">사람별 경조사비 매칭</h1>
-        <p className="page-desc">
-          내 경조사에 축의·부의를 해주신 분들과 내가 보낸 내역을 이름별로 맞춰 갚을 차례인지 한눈에 확인합니다.
-        </p>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="page-title">사람별 경조사비 매칭</h1>
+          <p className="page-desc">
+            내 경조사에 축의·부의를 해주신 분들과 내가 보낸 내역을 이름별로 맞춰 갚을 차례인지 한눈에 확인합니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => window.print()}
+          title="사람별 매칭 현황 인쇄 또는 PDF 저장"
+        >
+          <Printer size={16} /> 인쇄/PDF
+        </button>
       </header>
 
       {/* 요약 통계 카드 */}

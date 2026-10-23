@@ -189,6 +189,29 @@ export namespace eventtype {
 
 }
 
+export namespace excelio {
+	
+	export class ImportResult {
+	    totalRows: number;
+	    successRows: number;
+	    skippedRows: number;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalRows = source["totalRows"];
+	        this.successRows = source["successRows"];
+	        this.skippedRows = source["skippedRows"];
+	        this.errors = source["errors"];
+	    }
+	}
+
+}
+
 export namespace matching {
 	
 	export class HistoryItem {

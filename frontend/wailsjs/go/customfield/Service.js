@@ -14,10 +14,18 @@ export function GetValuesForRecord(arg1) {
   return window['go']['customfield']['Service']['GetValuesForRecord'](arg1);
 }
 
+export function GetValuesForRecords(arg1) {
+  return window['go']['customfield']['Service']['GetValuesForRecords'](arg1);
+}
+
 export function ListFields(arg1) {
   return window['go']['customfield']['Service']['ListFields'](arg1);
 }
 
 export function SaveValue(arg1, arg2, arg3) {
   return window['go']['customfield']['Service']['SaveValue'](arg1, arg2, arg3);
+}
+
+export function SaveValuesForRecord(arg1, arg2) {
+  return window['go']['customfield']['Service']['SaveValuesForRecord'](arg1, arg2);
 }
