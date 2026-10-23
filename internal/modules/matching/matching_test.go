@@ -55,12 +55,12 @@ func TestMatchingCalculation(t *testing.T) {
 
 	// 2. 받은 내역 등록
 	// 홍길동이 내 결혼식에 100,000원 입금
-	_, err = mySvc.CreateReceived(ev.ID, "홍길동", "010-1234-5678", "친구", 100000, "현금", false, "", "")
+	_, err = mySvc.CreateReceived(ev.ID, "홍길동", "010-1234-5678", "친구", 100000, "현금", "직접 참석", false, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	// 이영희가 내 결혼식에 50,000원 입금
-	_, err = mySvc.CreateReceived(ev.ID, "이영희", "010-9999-8888", "동료", 50000, "계좌이체", false, "", "")
+	_, err = mySvc.CreateReceived(ev.ID, "이영희", "010-9999-8888", "동료", 50000, "계좌이체", "불참 (계좌 송금)", false, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -52,6 +52,7 @@ type ReceivedItem struct {
 	Relationship  string `json:"relationship"`
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"paymentMethod"`
+	Attendance    string `json:"attendance"`
 	IsThanked     bool   `json:"isThanked"`
 	MemberSide    string `json:"memberSide"`
 	Notes         string `json:"notes"`
@@ -111,6 +112,11 @@ func (m *Module) Migrations() []db.Migration {
 			CREATE INDEX IF NOT EXISTS idx_received_myevent ON received(my_event_id);
 			CREATE INDEX IF NOT EXISTS idx_received_name ON received(name);
 			CREATE INDEX IF NOT EXISTS idx_received_phone ON received(phone_clean);`,
+		},
+		{
+			Version: 2,
+			Name:    "참석 여부(직접참석/불참지인전달/불참송금 등) 컬럼 추가",
+			SQL:     `ALTER TABLE received ADD COLUMN attendance TEXT NOT NULL DEFAULT '직접 참석';`,
 		},
 	}
 }
@@ -232,16 +238,16 @@ func (s *Service) DeleteEvent(id int64) error {
 // ListReceived 는 특정 행사의 받은 내역을 검색어와 함께 가져옵니다.
 func (s *Service) ListReceived(myEventId int64, search string) ([]ReceivedItem, error) {
 	query := `SELECT id, my_event_id, name, phone, phone_clean, relationship, amount, payment_method,
-		is_thanked, member_side, notes, created_at, updated_at
+		COALESCE(attendance, '직접 참석'), is_thanked, member_side, notes, created_at, updated_at
 		FROM received
 		WHERE my_event_id=? AND deleted_at IS NULL`
 	var args []any
 	args = append(args, myEventId)
 
 	if search != "" {
-		query += ` AND (name LIKE ? OR phone LIKE ? OR relationship LIKE ? OR notes LIKE ?)`
+		query += ` AND (name LIKE ? OR phone LIKE ? OR relationship LIKE ? OR notes LIKE ? OR attendance LIKE ?)`
 		pattern := "%" + search + "%"
-		args = append(args, pattern, pattern, pattern, pattern)
+		args = append(args, pattern, pattern, pattern, pattern, pattern)
 	}
 	query += ` ORDER BY id DESC`
 
@@ -256,7 +262,7 @@ func (s *Service) ListReceived(myEventId int64, search string) ([]ReceivedItem, 
 		var item ReceivedItem
 		var thankedInt int
 		if err := rows.Scan(&item.ID, &item.MyEventID, &item.Name, &item.Phone, &item.PhoneClean,
-			&item.Relationship, &item.Amount, &item.PaymentMethod, &thankedInt, &item.MemberSide,
+			&item.Relationship, &item.Amount, &item.PaymentMethod, &item.Attendance, &thankedInt, &item.MemberSide,
 			&item.Notes, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -267,15 +273,18 @@ func (s *Service) ListReceived(myEventId int64, search string) ([]ReceivedItem, 
 }
 
 // CreateReceived 는 새 받은 내역 1건을 저장합니다.
-func (s *Service) CreateReceived(myEventId int64, name, phone, relationship string, amount int64, paymentMethod string, isThanked bool, memberSide, notes string) (*ReceivedItem, error) {
+func (s *Service) CreateReceived(myEventId int64, name, phone, relationship string, amount int64, paymentMethod string, attendance string, isThanked bool, memberSide, notes string) (*ReceivedItem, error) {
 	if name == "" {
-		return nil, fmt.Errorf("입금자(참석자) 이름을 입력해주세요.")
+		return nil, fmt.Errorf("축의·부의자 이름을 입력해주세요.")
 	}
 	if relationship == "" {
 		relationship = "지인"
 	}
 	if paymentMethod == "" {
 		paymentMethod = "현금"
+	}
+	if attendance == "" {
+		attendance = "직접 참석"
 	}
 	now := time.Now().Format(time.RFC3339)
 	clean := cleanPhone(phone)
@@ -284,11 +293,11 @@ func (s *Service) CreateReceived(myEventId int64, name, phone, relationship stri
 		thankedInt = 1
 	}
 
-	res, err := s.db.Exec(`INSERT INTO received(my_event_id, name, phone, phone_clean, relationship, amount, payment_method, is_thanked, member_side, notes, created_at, updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-		myEventId, name, phone, clean, relationship, amount, paymentMethod, thankedInt, memberSide, notes, now, now)
+	res, err := s.db.Exec(`INSERT INTO received(my_event_id, name, phone, phone_clean, relationship, amount, payment_method, attendance, is_thanked, member_side, notes, created_at, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		myEventId, name, phone, clean, relationship, amount, paymentMethod, attendance, thankedInt, memberSide, notes, now, now)
 	if err != nil {
-		return nil, fmt.Errorf("받은 내역 추가 실패: %w", err)
+		return nil, fmt.Errorf("축의·부의금 내역 추가 실패: %w", err)
 	}
 	id, _ := res.LastInsertId()
 	item := &ReceivedItem{
@@ -300,6 +309,7 @@ func (s *Service) CreateReceived(myEventId int64, name, phone, relationship stri
 		Relationship:  relationship,
 		Amount:        amount,
 		PaymentMethod: paymentMethod,
+		Attendance:    attendance,
 		IsThanked:     isThanked,
 		MemberSide:    memberSide,
 		Notes:         notes,
@@ -311,18 +321,21 @@ func (s *Service) CreateReceived(myEventId int64, name, phone, relationship stri
 }
 
 // UpdateReceived 는 받은 내역 정보를 수정합니다.
-func (s *Service) UpdateReceived(id int64, name, phone, relationship string, amount int64, paymentMethod string, isThanked bool, memberSide, notes string) error {
+func (s *Service) UpdateReceived(id int64, name, phone, relationship string, amount int64, paymentMethod string, attendance string, isThanked bool, memberSide, notes string) error {
 	now := time.Now().Format(time.RFC3339)
 	clean := cleanPhone(phone)
 	thankedInt := 0
 	if isThanked {
 		thankedInt = 1
 	}
+	if attendance == "" {
+		attendance = "직접 참석"
+	}
 
-	_, err := s.db.Exec(`UPDATE received SET name=?, phone=?, phone_clean=?, relationship=?, amount=?, payment_method=?, is_thanked=?, member_side=?, notes=?, updated_at=?
-		WHERE id=?`, name, phone, clean, relationship, amount, paymentMethod, thankedInt, memberSide, notes, now, id)
+	_, err := s.db.Exec(`UPDATE received SET name=?, phone=?, phone_clean=?, relationship=?, amount=?, payment_method=?, attendance=?, is_thanked=?, member_side=?, notes=?, updated_at=?
+		WHERE id=?`, name, phone, clean, relationship, amount, paymentMethod, attendance, thankedInt, memberSide, notes, now, id)
 	if err != nil {
-		return fmt.Errorf("받은 내역 수정 실패: %w", err)
+		return fmt.Errorf("축의·부의금 내역 수정 실패: %w", err)
 	}
 	s.bus.Publish("myevent", EventReceivedUpdated, map[string]any{"id": id, "name": name, "amount": amount})
 	return nil

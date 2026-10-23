@@ -258,10 +258,10 @@ export default function SentPage() {
   const totalAmount = sentList.reduce((acc, cur) => acc + cur.amount, 0);
 
   return (
-    <>
+    <div className="page-container">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="page-title">타인의 경조사 (보낸 돈)</h1>
+          <h1 className="page-title">타인 경조사</h1>
           <p className="page-desc">지인, 동료, 친척 등의 결혼식, 장례식 등에 보낸 경조사비 지출을 기록합니다.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -698,6 +698,6 @@ export default function SentPage() {
         targetMenu="sent"
         targetTitle="타인 경조사"
       />
-    </>
+    </div>
   );
 }

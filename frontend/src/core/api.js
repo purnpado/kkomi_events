@@ -93,10 +93,10 @@ export const api = {
     deleteEvent: (id) => call('myevent.Service.DeleteEvent', id),
 
     listReceived: (myEventId, search = '') => call('myevent.Service.ListReceived', myEventId, search),
-    createReceived: (myEventId, name, phone, relationship, amount, paymentMethod, isThanked, memberSide, notes) =>
-      call('myevent.Service.CreateReceived', myEventId, name, phone, relationship, amount, paymentMethod, isThanked, memberSide, notes),
-    updateReceived: (id, name, phone, relationship, amount, paymentMethod, isThanked, memberSide, notes) =>
-      call('myevent.Service.UpdateReceived', id, name, phone, relationship, amount, paymentMethod, isThanked, memberSide, notes),
+    createReceived: (myEventId, name, phone, relationship, amount, paymentMethod, attendance, isThanked, memberSide, notes) =>
+      call('myevent.Service.CreateReceived', myEventId, name, phone, relationship, amount, paymentMethod, attendance, isThanked, memberSide, notes),
+    updateReceived: (id, name, phone, relationship, amount, paymentMethod, attendance, isThanked, memberSide, notes) =>
+      call('myevent.Service.UpdateReceived', id, name, phone, relationship, amount, paymentMethod, attendance, isThanked, memberSide, notes),
     deleteReceived: (id) => call('myevent.Service.DeleteReceived', id),
     toggleThanked: (id) => call('myevent.Service.ToggleThanked', id),
   },

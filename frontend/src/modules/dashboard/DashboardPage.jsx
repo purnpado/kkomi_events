@@ -26,9 +26,9 @@ export default function DashboardPage() {
   });
 
   return (
-    <>
+    <div className="page-container">
       <header className="page-header">
-        <h1 className="page-title">경조사비 대시보드</h1>
+        <h1 className="page-title">대시보드</h1>
         <p className="page-desc">받은 경조사비와 보낸 경조사비의 전반적인 입출 현황과 통계를 한눈에 확인합니다.</p>
       </header>
 
@@ -139,6 +139,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

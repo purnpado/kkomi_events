@@ -355,6 +355,7 @@ export namespace myevent {
 	    relationship: string;
 	    amount: number;
 	    paymentMethod: string;
+	    attendance: string;
 	    isThanked: boolean;
 	    memberSide: string;
 	    notes: string;
@@ -376,6 +377,7 @@ export namespace myevent {
 	        this.relationship = source["relationship"];
 	        this.amount = source["amount"];
 	        this.paymentMethod = source["paymentMethod"];
+	        this.attendance = source["attendance"];
 	        this.isThanked = source["isThanked"];
 	        this.memberSide = source["memberSide"];
 	        this.notes = source["notes"];

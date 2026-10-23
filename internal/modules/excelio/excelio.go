@@ -89,7 +89,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 	}
 
 	// 3. 받은 내역 목록 조회
-	rows, err := s.db.Query(`SELECT id, name, phone, relationship, amount, payment_method, is_thanked, member_side, notes
+	rows, err := s.db.Query(`SELECT id, name, phone, relationship, amount, payment_method, COALESCE(attendance, '직접 참석'), is_thanked, member_side, notes
 		FROM received WHERE my_event_id=? AND deleted_at IS NULL ORDER BY id ASC`, myEventId)
 	if err != nil {
 		return "", fmt.Errorf("내역 조회 실패: %w", err)
@@ -103,6 +103,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 		Relation   string
 		Amount     int64
 		Method     string
+		Attendance string
 		IsThanked  int
 		MemberSide string
 		Notes      string
@@ -111,7 +112,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 	var recIds []int64
 	for rows.Next() {
 		var it Item
-		if err := rows.Scan(&it.ID, &it.Name, &it.Phone, &it.Relation, &it.Amount, &it.Method, &it.IsThanked, &it.MemberSide, &it.Notes); err == nil {
+		if err := rows.Scan(&it.ID, &it.Name, &it.Phone, &it.Relation, &it.Amount, &it.Method, &it.Attendance, &it.IsThanked, &it.MemberSide, &it.Notes); err == nil {
 			items = append(items, it)
 			recIds = append(recIds, it.ID)
 		}
@@ -160,7 +161,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 	// 4. 엑셀 파일 생성
 	f := excelize.NewFile()
 	defer f.Close()
-	sheetName := "받은내역장부"
+	sheetName := "축의부의금장부"
 	f.SetSheetName("Sheet1", sheetName)
 
 	// 스타일 정의
@@ -216,7 +217,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 	f.SetCellStyle(sheetName, "A2", "A2", subTitleStyle)
 
 	// 헤더 컬럼 목록 빌드
-	headers := []string{"번호", "입금자명", "전화번호", "관계", "금액", "수납방법", "구분", "답례완료"}
+	headers := []string{"번호", "이름", "전화번호", "관계", "금액", "참석여부", "구분", "답례완료"}
 	for _, cf := range customFields {
 		headers = append(headers, cf.Name)
 	}
@@ -255,7 +256,7 @@ func (s *Service) ExportMyEvent(myEventId int64) (string, error) {
 		f.SetCellValue(sheetName, c3, it.Phone)
 		f.SetCellValue(sheetName, c4, it.Relation)
 		f.SetCellValue(sheetName, c5, it.Amount)
-		f.SetCellValue(sheetName, c6, it.Method)
+		f.SetCellValue(sheetName, c6, it.Attendance)
 		f.SetCellValue(sheetName, c7, it.MemberSide)
 		f.SetCellValue(sheetName, c8, thankedStr)
 
@@ -596,7 +597,7 @@ func (s *Service) DownloadTemplate() (string, error) {
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
 
-	headers := []string{"이름(필수)", "전화번호", "관계", "금액(필수)", "수납방법", "구분", "답례완료(예/아니오)", "비고"}
+	headers := []string{"이름(필수)", "전화번호", "관계", "금액(필수)", "참석여부(직접참석/불참지인전달/불참송금)", "구분", "답례완료(예/아니오)", "비고"}
 	for i, h := range headers {
 		c, _ := excelize.CoordinatesToCellName(i+1, 1)
 		f.SetCellValue(sheet, c, h)
@@ -608,7 +609,7 @@ func (s *Service) DownloadTemplate() (string, error) {
 	f.SetCellValue(sheet, "B2", "010-1234-5678")
 	f.SetCellValue(sheet, "C2", "친구")
 	f.SetCellValue(sheet, "D2", 50000)
-	f.SetCellValue(sheet, "E2", "현금")
+	f.SetCellValue(sheet, "E2", "직접 참석")
 	f.SetCellValue(sheet, "F2", "신랑측")
 	f.SetCellValue(sheet, "G2", "예")
 	f.SetCellValue(sheet, "H2", "고등학교 동창")
@@ -617,7 +618,7 @@ func (s *Service) DownloadTemplate() (string, error) {
 	f.SetCellValue(sheet, "B3", "010-9876-5432")
 	f.SetCellValue(sheet, "C3", "직장/동료")
 	f.SetCellValue(sheet, "D3", 100000)
-	f.SetCellValue(sheet, "E3", "계좌이체")
+	f.SetCellValue(sheet, "E3", "불참 (계좌 송금)")
 	f.SetCellValue(sheet, "F3", "신랑측")
 	f.SetCellValue(sheet, "G3", "아니오")
 	f.SetCellValue(sheet, "H3", "동행인 1명")
@@ -626,7 +627,7 @@ func (s *Service) DownloadTemplate() (string, error) {
 	f.SetColWidth(sheet, "B", "B", 18)
 	f.SetColWidth(sheet, "C", "C", 14)
 	f.SetColWidth(sheet, "D", "D", 16)
-	f.SetColWidth(sheet, "E", "E", 14)
+	f.SetColWidth(sheet, "E", "E", 18)
 	f.SetColWidth(sheet, "F", "F", 14)
 	f.SetColWidth(sheet, "G", "G", 18)
 	f.SetColWidth(sheet, "H", "H", 25)
@@ -670,7 +671,7 @@ func (s *Service) ImportReceived(myEventId int64) (*ImportResult, error) {
 
 	// 헤더 분석 (어떤 열이 이름, 금액인지 지능적 매핑)
 	headerRow := rows[0]
-	nameCol, phoneCol, relCol, amtCol, methodCol, sideCol, thankedCol, notesCol := -1, -1, -1, -1, -1, -1, -1, -1
+	nameCol, phoneCol, relCol, amtCol, attCol, methodCol, sideCol, thankedCol, notesCol := -1, -1, -1, -1, -1, -1, -1, -1, -1
 
 	for idx, cell := range headerRow {
 		clean := strings.ReplaceAll(strings.TrimSpace(cell), " ", "")
@@ -690,6 +691,10 @@ func (s *Service) ImportReceived(myEventId int64) (*ImportResult, error) {
 		case strings.Contains(clean, "금액") || strings.Contains(clean, "축의금") || strings.Contains(clean, "부의금") || strings.Contains(clean, "입금액"):
 			if amtCol == -1 {
 				amtCol = idx
+			}
+		case strings.Contains(clean, "참석") || strings.Contains(clean, "출석"):
+			if attCol == -1 {
+				attCol = idx
 			}
 		case strings.Contains(clean, "수납") || strings.Contains(clean, "방법") || strings.Contains(clean, "지불"):
 			if methodCol == -1 {
@@ -725,8 +730,8 @@ func (s *Service) ImportReceived(myEventId int64) (*ImportResult, error) {
 	defer tx.Rollback()
 
 	now := time.Now().Format(time.RFC3339)
-	stmt, err := tx.Prepare(`INSERT INTO received(my_event_id, name, phone, phone_clean, relationship, amount, payment_method, is_thanked, member_side, notes, created_at, updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+	stmt, err := tx.Prepare(`INSERT INTO received(my_event_id, name, phone, phone_clean, relationship, amount, payment_method, attendance, is_thanked, member_side, notes, created_at, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return nil, err
 	}
@@ -759,6 +764,12 @@ func (s *Service) ImportReceived(myEventId int64) (*ImportResult, error) {
 		if rel == "" {
 			rel = "지인"
 		}
+		attendance := "직접 참석"
+		if attCol != -1 {
+			if a := getCell(row, attCol); a != "" {
+				attendance = a
+			}
+		}
 		method := getCell(row, methodCol)
 		if method == "" {
 			method = "현금"
@@ -771,7 +782,7 @@ func (s *Service) ImportReceived(myEventId int64) (*ImportResult, error) {
 		}
 		notes := getCell(row, notesCol)
 
-		_, err := stmt.Exec(myEventId, name, phone, cleanP, rel, amt, method, thankedInt, side, notes, now, now)
+		_, err := stmt.Exec(myEventId, name, phone, cleanP, rel, amt, method, attendance, thankedInt, side, notes, now, now)
 		if err != nil {
 			result.SkippedRows++
 			result.Errors = append(result.Errors, fmt.Sprintf("%d행: DB 저장 오류 (%v)", rIdx+1, err))

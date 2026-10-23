@@ -4,7 +4,7 @@ import {myevent} from '../models';
 
 export function CreateEvent(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<myevent.MyEvent>;
 
-export function CreateReceived(arg1:number,arg2:string,arg3:string,arg4:string,arg5:number,arg6:string,arg7:boolean,arg8:string,arg9:string):Promise<myevent.ReceivedItem>;
+export function CreateReceived(arg1:number,arg2:string,arg3:string,arg4:string,arg5:number,arg6:string,arg7:string,arg8:boolean,arg9:string,arg10:string):Promise<myevent.ReceivedItem>;
 
 export function DeleteEvent(arg1:number):Promise<void>;
 
@@ -18,4 +18,4 @@ export function ToggleThanked(arg1:number):Promise<void>;
 
 export function UpdateEvent(arg1:number,arg2:number,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string):Promise<void>;
 
-export function UpdateReceived(arg1:number,arg2:string,arg3:string,arg4:string,arg5:number,arg6:string,arg7:boolean,arg8:string,arg9:string):Promise<void>;
+export function UpdateReceived(arg1:number,arg2:string,arg3:string,arg4:string,arg5:number,arg6:string,arg7:string,arg8:boolean,arg9:string,arg10:string):Promise<void>;

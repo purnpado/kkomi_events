@@ -25,20 +25,29 @@ export function MonthlyBarChart({ data = [], height = 240 }) {
       return;
     }
 
-    // 최대값 계산 (최소 10만원 기준)
+    if (!data || data.length === 0) {
+      ctx.fillStyle = '#888';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('월별 데이터가 없습니다.', width / 2, h / 2);
+      return;
+    }
+
     let maxVal = 100000;
     data.forEach((d) => {
-      if (d.receivedAmount > maxVal) maxVal = d.receivedAmount;
-      if (d.sentAmount > maxVal) maxVal = d.sentAmount;
+      const rec = Number(d.receivedAmount || d.received || 0);
+      const snt = Number(d.sentAmount || d.sent || 0);
+      if (rec > maxVal) maxVal = rec;
+      if (snt > maxVal) maxVal = snt;
     });
 
-    const paddingLeft = 40;
+    const paddingLeft = 45;
     const paddingRight = 20;
     const paddingBottom = 40;
     const paddingTop = 30;
 
-    const chartWidth = width - paddingLeft - paddingRight;
-    const chartHeight = h - paddingTop - paddingBottom;
+    const chartWidth = Math.max(10, width - paddingLeft - paddingRight);
+    const chartHeight = Math.max(10, h - paddingTop - paddingBottom);
 
     // 배경 눈금선
     ctx.strokeStyle = 'rgba(150, 150, 150, 0.15)';
@@ -62,35 +71,40 @@ export function MonthlyBarChart({ data = [], height = 240 }) {
 
     data.forEach((d, idx) => {
       const groupCenterX = paddingLeft + groupWidth * idx + groupWidth / 2;
+      const rec = Number(d.receivedAmount || d.received || 0);
+      const snt = Number(d.sentAmount || d.sent || 0);
 
       // 1. 받은 돈 막대 (초록/수입)
-      const rBarHeight = (d.receivedAmount / maxVal) * chartHeight;
+      const rBarHeight = Math.max(0, (rec / maxVal) * chartHeight);
       const rBarX = groupCenterX - barWidth - 3;
       const rBarY = paddingTop + chartHeight - rBarHeight;
 
-      // 막대 그라디언트
-      const gradIncome = ctx.createLinearGradient(0, rBarY, 0, rBarY + rBarHeight);
-      gradIncome.addColorStop(0, '#10B981');
-      gradIncome.addColorStop(1, '#059669');
-      ctx.fillStyle = gradIncome;
-      roundRect(ctx, rBarX, rBarY, barWidth, rBarHeight, 4);
+      if (rBarHeight > 0 && isFinite(rBarY)) {
+        const gradIncome = ctx.createLinearGradient(0, rBarY, 0, rBarY + rBarHeight);
+        gradIncome.addColorStop(0, '#10B981');
+        gradIncome.addColorStop(1, '#059669');
+        ctx.fillStyle = gradIncome;
+        roundRect(ctx, rBarX, rBarY, barWidth, rBarHeight, 4);
+      }
 
       // 2. 보낸 돈 막대 (살구/코랄/지출)
-      const sBarHeight = (d.sentAmount / maxVal) * chartHeight;
+      const sBarHeight = Math.max(0, (snt / maxVal) * chartHeight);
       const sBarX = groupCenterX + 3;
       const sBarY = paddingTop + chartHeight - sBarHeight;
 
-      const gradExpense = ctx.createLinearGradient(0, sBarY, 0, sBarY + sBarHeight);
-      gradExpense.addColorStop(0, '#F43F5E');
-      gradExpense.addColorStop(1, '#E11D48');
-      ctx.fillStyle = gradExpense;
-      roundRect(ctx, sBarX, sBarY, barWidth, sBarHeight, 4);
+      if (sBarHeight > 0 && isFinite(sBarY)) {
+        const gradExpense = ctx.createLinearGradient(0, sBarY, 0, sBarY + sBarHeight);
+        gradExpense.addColorStop(0, '#F43F5E');
+        gradExpense.addColorStop(1, '#E11D48');
+        ctx.fillStyle = gradExpense;
+        roundRect(ctx, sBarX, sBarY, barWidth, sBarHeight, 4);
+      }
 
       // 월 레이블
       ctx.fillStyle = '#666';
       ctx.font = '12px Pretendard, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(d.month, groupCenterX, h - 14);
+      ctx.fillText(d.month || '', groupCenterX, h - 14);
     });
   }, [data, height]);
 

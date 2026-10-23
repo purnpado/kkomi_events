@@ -22,6 +22,13 @@ const RELATION_OPTIONS = [
   { value: '기타', label: '기타' },
 ];
 
+const ATTENDANCE_OPTIONS = [
+  { value: '직접 참석', label: '직접 참석' },
+  { value: '불참 (지인 대리 전달)', label: '불참 (지인 대리 전달)' },
+  { value: '불참 (계좌 송금)', label: '불참 (계좌 송금)' },
+  { value: '불참 (기타)', label: '불참 (기타)' },
+];
+
 const PAYMENT_OPTIONS = [
   { value: '현금', label: '현금' },
   { value: '계좌이체', label: '계좌이체' },
@@ -62,7 +69,7 @@ export default function MyEventPage() {
     notes: '',
   });
 
-  // 받은 내역 입력 폼
+  // 축의/부의금 입력 폼
   const [receivedForm, setReceivedForm] = useState({
     id: null,
     name: '',
@@ -70,6 +77,7 @@ export default function MyEventPage() {
     relationship: '친구',
     amount: 50000,
     paymentMethod: '현금',
+    attendance: '직접 참석',
     isThanked: false,
     memberSide: '본인',
     notes: '',
@@ -254,7 +262,7 @@ export default function MyEventPage() {
     }
   };
 
-  // ── 받은 내역 등록 / 수정 ──
+  // ── 축의·부의금 등록 / 수정 ──
   const openCreateReceived = () => {
     if (!activeEventId) {
       emit('toast.show', { title: '행사 필요', message: '먼저 행사를 등록하거나 선택해주세요.', type: 'error' });
@@ -267,6 +275,7 @@ export default function MyEventPage() {
       relationship: '친구',
       amount: 50000,
       paymentMethod: '현금',
+      attendance: '직접 참석',
       isThanked: false,
       memberSide: '신랑측/본인',
       notes: '',
@@ -282,7 +291,8 @@ export default function MyEventPage() {
       phone: item.phone,
       relationship: item.relationship,
       amount: item.amount,
-      paymentMethod: item.paymentMethod,
+      paymentMethod: item.paymentMethod || '현금',
+      attendance: item.attendance || '직접 참석',
       isThanked: item.isThanked,
       memberSide: item.memberSide,
       notes: item.notes,
@@ -293,7 +303,7 @@ export default function MyEventPage() {
 
   const handleSaveReceived = async () => {
     if (!receivedForm.name.trim()) {
-      emit('toast.show', { title: '입력 필요', message: '입금자명을 입력해주세요.', type: 'error' });
+      emit('toast.show', { title: '입력 필요', message: '이름을 입력해주세요.', type: 'error' });
       return;
     }
     try {
@@ -306,11 +316,12 @@ export default function MyEventPage() {
           receivedForm.relationship,
           receivedForm.amount,
           receivedForm.paymentMethod,
+          receivedForm.attendance,
           receivedForm.isThanked,
           receivedForm.memberSide,
           receivedForm.notes
         );
-        emit('toast.show', { title: '내역 수정', message: '받은 내역이 수정되었습니다.', type: 'success' });
+        emit('toast.show', { title: '수정 완료', message: '축의·부의금 내역이 수정되었습니다.', type: 'success' });
       } else {
         const res = await api.myevent.createReceived(
           activeEventId,
@@ -319,12 +330,13 @@ export default function MyEventPage() {
           receivedForm.relationship,
           receivedForm.amount,
           receivedForm.paymentMethod,
+          receivedForm.attendance,
           receivedForm.isThanked,
           receivedForm.memberSide,
           receivedForm.notes
         );
         savedId = res?.id;
-        emit('toast.show', { title: '등록 완료', message: `${receivedForm.name} 님의 축의/부의금이 기록되었습니다.`, type: 'success' });
+        emit('toast.show', { title: '등록 완료', message: `${receivedForm.name} 님의 축의·부의금이 기록되었습니다.`, type: 'success' });
       }
 
       // 맞춤 항목 값 저장
@@ -430,10 +442,10 @@ export default function MyEventPage() {
   };
 
   return (
-    <>
+    <div className="page-container">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="page-title">나의 경조사 (받은 돈)</h1>
+          <h1 className="page-title">나의 경조사</h1>
           <p className="page-desc">결혼, 돌잔치, 장례식 등 내가 주최한 행사에 들어온 축의금·부의금을 정리합니다.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -456,7 +468,7 @@ export default function MyEventPage() {
         </div>
       </header>
 
-      {/* 탭 헤더 바 */}
+      {/* 1차 탭: 경조사 대분류 (결혼, 돌잔치, 장례식 등) */}
       <Tabs.Root value={activeTypeId || ''} onValueChange={(val) => setActiveTypeId(val)}>
         <div className="tabs-header-bar">
           <Tabs.List className="tabs-list">
@@ -470,91 +482,96 @@ export default function MyEventPage() {
         </div>
       </Tabs.Root>
 
-      {/* 행사 선택 & 정보 요약 카드 */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>행사 선택:</span>
-            {events.length > 0 ? (
-              <select
-                className="input-text"
-                style={{ width: 'auto', minWidth: 220, fontWeight: 700 }}
-                value={activeEventId || ''}
-                onChange={(e) => setActiveEventId(Number(e.target.value))}
-              >
-                {events.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.title} ({formatDate(ev.eventDate)})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <span className="stat-label">등록된 행사가 없습니다. 행사를 먼저 만들어주세요.</span>
-            )}
-            <button type="button" className="btn btn-ghost" onClick={openCreateEvent} style={{ padding: '8px 12px' }}>
-              <Plus size={16} /> 새 행사 추가
-            </button>
-          </div>
-
-          {activeEvent && (
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button type="button" className="btn-chip" onClick={() => openEditEvent(activeEvent)}>
-                <Edit2 size={13} /> 행사 정보 수정
-              </button>
-              <button
-                type="button"
-                className="btn-chip btn-chip-clear"
-                onClick={() => handleDeleteEvent(activeEvent.id, activeEvent.title)}
-              >
-                <Trash2 size={13} /> 삭제
-              </button>
-            </div>
-          )}
+      {/* 2차 서브 탭: 선택된 분류의 행사들을 가로 탭으로 나열 */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--fg-muted)' }}>
+            📅 {activeType?.name || '경조사'} 행사 선택
+          </span>
         </div>
 
-        {activeEvent && (
-          <div
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Calendar size={15} /> {formatDate(activeEvent.eventDate)}
+        <div className="subtabs-container">
+          {events.length > 0 ? (
+            events.map((ev) => {
+              const isSelected = ev.id === activeEventId;
+              return (
+                <button
+                  key={ev.id}
+                  type="button"
+                  className="subtab-item"
+                  data-active={isSelected}
+                  onClick={() => setActiveEventId(ev.id)}
+                >
+                  <span>{activeType?.icon || '🎉'}</span>
+                  <span>{ev.title}</span>
+                  <span style={{ fontSize: '0.78rem', opacity: isSelected ? 0.9 : 0.65, marginLeft: 2 }}>
+                    ({formatDate(ev.eventDate)})
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <span style={{ color: 'var(--fg-muted)', fontSize: '0.88rem', padding: '6px 0' }}>
+              등록된 {activeType?.name || '행사'}가 없습니다.
+            </span>
+          )}
+          <button type="button" className="subtab-add-btn" onClick={openCreateEvent}>
+            <Plus size={15} /> 새 행사 추가
+          </button>
+        </div>
+      </div>
+
+      {/* 선택된 행사 상세 정보 카드 */}
+      {activeEvent && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: 'var(--fg-muted)', fontSize: '0.9rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600, color: 'var(--fg)' }}>
+                <Calendar size={16} /> {formatDate(activeEvent.eventDate)}
               </span>
               {activeEvent.location && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <MapPin size={15} /> {activeEvent.location}
                 </span>
               )}
-              {activeEvent.targetName && <span>주인공: {activeEvent.targetName}</span>}
+              {activeEvent.targetName && <span>주인공: <strong style={{ color: 'var(--fg)' }}>{activeEvent.targetName}</strong></span>}
               {activeEvent.notes && <span>비고: {activeEvent.notes}</span>}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <div>
-                <span className="stat-label">총 인원: </span>
-                <strong style={{ fontSize: '1.2rem', color: 'var(--fg)' }}>{activeEvent.totalCount}명</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="btn-chip" onClick={() => openEditEvent(activeEvent)}>
+                  <Edit2 size={13} /> 행사 정보 수정
+                </button>
+                <button
+                  type="button"
+                  className="btn-chip btn-chip-clear"
+                  onClick={() => handleDeleteEvent(activeEvent.id, activeEvent.title)}
+                >
+                  <Trash2 size={13} /> 삭제
+                </button>
               </div>
-              <div>
-                <span className="stat-label">총 받은 금액: </span>
-                <strong style={{ fontSize: '1.35rem', color: 'var(--income)' }}>{formatMoney(activeEvent.totalAmount)}</strong>
+
+              <div style={{ height: 24, width: 1, background: 'var(--border)' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div>
+                  <span className="stat-label">총 인원: </span>
+                  <strong style={{ fontSize: '1.2rem', color: 'var(--fg)' }}>{activeEvent.totalCount}명</strong>
+                </div>
+                <div>
+                  <span className="stat-label">총 금액: </span>
+                  <strong style={{ fontSize: '1.35rem', color: 'var(--income)' }}>{formatMoney(activeEvent.totalAmount)}</strong>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* 받은 내역 목록 섹션 */}
+      {/* 축의·부의금 명단 목록 섹션 */}
       {activeEvent ? (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: 260 }}>
               <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--fg-muted)' }} />
@@ -602,7 +619,7 @@ export default function MyEventPage() {
                 <Printer size={14} /> 인쇄/PDF
               </button>
               <button type="button" className="btn" onClick={openCreateReceived} style={{ marginLeft: 4 }}>
-                <UserPlus size={16} /> 받은 내역 등록
+                <UserPlus size={16} /> 축의·부의금 등록
               </button>
             </div>
           </div>
@@ -611,11 +628,11 @@ export default function MyEventPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 100 }}>입금자명</th>
+                  <th style={{ width: 110 }}>이름</th>
                   <th style={{ width: 130 }}>전화번호</th>
                   <th style={{ width: 100 }}>관계</th>
                   <th style={{ width: 130, textAlign: 'right' }}>금액</th>
-                  <th style={{ width: 110 }}>수납 방법</th>
+                  <th style={{ width: 130, textAlign: 'center' }}>참석 여부</th>
                   {isSharedMode && <th style={{ width: 100 }}>구분</th>}
                   <th style={{ width: 90, textAlign: 'center' }}>답례 완료</th>
                   {customFields.map((f) => (
@@ -631,7 +648,13 @@ export default function MyEventPage() {
                 {receivedList.length === 0 ? (
                   <tr>
                     <td colSpan={(isSharedMode ? 9 : 8) + customFields.length} className="table-empty">
-                      {search ? '검색된 내역이 없습니다.' : '아직 등록된 받은 내역이 없습니다. [받은 내역 등록] 버튼을 눌러 추가하세요.'}
+                      <Sparkles size={32} style={{ color: 'var(--brand-400)', opacity: 0.8 }} />
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--fg)' }}>
+                        {search ? '검색된 축의·부의금 내역이 없습니다.' : '아직 등록된 축의·부의금이 없습니다.'}
+                      </div>
+                      <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)' }}>
+                        우측 상단의 <strong>[+ 축의·부의금 등록]</strong> 버튼을 눌러 첫 손님을 기록해 보세요.
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -645,7 +668,21 @@ export default function MyEventPage() {
                       <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--income)' }}>
                         {formatMoney(item.amount)}
                       </td>
-                      <td>{item.paymentMethod}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span
+                          className={`badge ${
+                            item.attendance === '직접 참석'
+                              ? 'badge-att-direct'
+                              : item.attendance?.includes('송금')
+                              ? 'badge-att-transfer'
+                              : item.attendance?.includes('전달')
+                              ? 'badge-att-proxy'
+                              : ''
+                          }`}
+                        >
+                          {item.attendance || '직접 참석'}
+                        </span>
+                      </td>
                       {isSharedMode && <td><span className="badge">{item.memberSide || '공통'}</span></td>}
                       <td style={{ textAlign: 'center' }}>
                         <button
@@ -800,16 +837,16 @@ export default function MyEventPage() {
         </div>
       </Modal>
 
-      {/* 받은 내역 등록/수정 모달 */}
+      {/* 축의·부의금 등록/수정 모달 */}
       <Modal
         open={receivedModalOpen}
         onOpenChange={setReceivedModalOpen}
-        title={receivedForm.id ? '받은 내역 수정' : '축의/부의금 받은 내역 등록'}
+        title={receivedForm.id ? '축의·부의금 정보 수정' : '새 축의·부의금 등록'}
         description={`'${activeEvent ? activeEvent.title : ''}' 행사에 축하/조의를 보내주신 분의 정보를 기록합니다.`}
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label className="form-label">입금자(참석자) 이름 *</label>
+            <label className="form-label">축의·부의자(손님) 이름 *</label>
             <input
               type="text"
               className="input-text"
@@ -850,11 +887,11 @@ export default function MyEventPage() {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">받은 방법</label>
+            <label className="form-label">참석 여부 *</label>
             <Select
-              value={receivedForm.paymentMethod}
-              onValueChange={(val) => setReceivedForm({ ...receivedForm, paymentMethod: val })}
-              options={PAYMENT_OPTIONS}
+              value={receivedForm.attendance}
+              onValueChange={(val) => setReceivedForm({ ...receivedForm, attendance: val })}
+              options={ATTENDANCE_OPTIONS}
             />
           </div>
         </div>
@@ -1014,6 +1051,6 @@ export default function MyEventPage() {
         targetMenu="myevent"
         targetTitle="나의 경조사"
       />
-    </>
+    </div>
   );
 }

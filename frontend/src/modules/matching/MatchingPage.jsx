@@ -51,12 +51,12 @@ export default function MatchingPage() {
   const receiveBackTotal = summaries.filter((s) => s.balance < 0).reduce((acc, cur) => acc + Math.abs(cur.balance), 0);
 
   return (
-    <>
+    <div className="page-container">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="page-title">사람별 경조사비 매칭</h1>
+          <h1 className="page-title">주고받은 내역</h1>
           <p className="page-desc">
-            내 경조사에 축의·부의를 해주신 분들과 내가 보낸 내역을 이름별로 맞춰 갚을 차례인지 한눈에 확인합니다.
+            지인과 주고받은 경조사비를 사람별로 맞춰보고 균형과 타임라인을 확인합니다.
           </p>
         </div>
         <button
@@ -324,6 +324,6 @@ export default function MatchingPage() {
           </div>
         )}
       </Modal>
-    </>
+    </div>
   );
 }

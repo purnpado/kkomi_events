@@ -6,8 +6,8 @@ export function CreateEvent(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['myevent']['Service']['CreateEvent'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
-export function CreateReceived(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
-  return window['go']['myevent']['Service']['CreateReceived'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+export function CreateReceived(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+  return window['go']['myevent']['Service']['CreateReceived'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 }
 
 export function DeleteEvent(arg1) {
@@ -34,6 +34,6 @@ export function UpdateEvent(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
   return window['go']['myevent']['Service']['UpdateEvent'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
-export function UpdateReceived(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
-  return window['go']['myevent']['Service']['UpdateReceived'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+export function UpdateReceived(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+  return window['go']['myevent']['Service']['UpdateReceived'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 }

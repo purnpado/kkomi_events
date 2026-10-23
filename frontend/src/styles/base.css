@@ -119,8 +119,20 @@ button {
 }
 
 .main {
-  overflow: auto;
-  padding: var(--space-6);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-6) var(--space-6) 60px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-sunken);
+}
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
 }
 
 .page-header {
@@ -569,10 +581,14 @@ textarea.input-text {
 /* ── 데이터 테이블 ── */
 .table-container {
   width: 100%;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
 }
 
 .data-table {
@@ -608,8 +624,90 @@ textarea.input-text {
 
 .table-empty {
   text-align: center;
-  padding: 40px 16px;
+  padding: 80px 20px;
   color: var(--fg-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ── 행사 서브 탭 (가로 칩/세그먼트 탭) ── */
+.subtabs-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 0 6px;
+}
+
+.subtab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+
+.subtab-item:hover {
+  background: var(--bg-sunken);
+  border-color: var(--brand-300);
+  transform: translateY(-1px);
+}
+
+.subtab-item[data-active='true'] {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+  border-color: var(--brand-600);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 14px hsl(12 80% 50% / 0.35);
+}
+
+.subtab-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px dashed var(--brand-400);
+  background: transparent;
+  color: var(--brand-600);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+
+.subtab-add-btn:hover {
+  background: var(--brand-50);
+  border-color: var(--brand-500);
+}
+
+/* ── 참석 여부 전용 뱃지 ── */
+.badge-att-direct {
+  background: hsl(158 52% 92%);
+  color: var(--income);
+  font-weight: 700;
+}
+
+.badge-att-transfer {
+  background: hsl(214 90% 93%);
+  color: hsl(214 80% 40%);
+  font-weight: 700;
+}
+
+.badge-att-proxy {
+  background: hsl(38 92% 90%);
+  color: hsl(38 80% 34%);
+  font-weight: 700;
 }
 
 /* ── 탭 바 (Radix Tabs) ── */
