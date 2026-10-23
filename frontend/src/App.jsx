@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getModules } from './core/registry';
 import { useBusEvent } from './core/hooks';
 import ToastProvider from './ui/Toast';
+import logoImg from './assets/logo.png';
 
 const SECTION_TITLES = { main: '장부', tools: '도구', system: '시스템' };
 
@@ -32,7 +33,9 @@ export default function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-logo" aria-hidden>🎎</div>
+          <div className="brand-logo" aria-hidden style={{ overflow: 'hidden', padding: 0, background: 'transparent', boxShadow: 'none' }}>
+            <img src={logoImg} alt="꼬미 로고" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 10 }} />
+          </div>
           <div>
             <div className="brand-name">꼬미경조사</div>
             <div className="brand-ver">경조사비 장부</div>
