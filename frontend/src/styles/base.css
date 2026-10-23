@@ -292,12 +292,14 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
   font-size: 0.8rem;
   font-weight: 700;
   background: var(--primary-light);
   color: var(--primary-hover);
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .badge-ok {
@@ -312,8 +314,13 @@ button {
 
 .mono {
   font-family: Consolas, 'D2Coding', monospace;
-  font-size: 0.85rem;
-  word-break: break-all;
+  font-size: 0.88rem;
+  white-space: nowrap !important;
+  letter-spacing: 0.02em;
+}
+
+.cell-nowrap {
+  white-space: nowrap !important;
 }
 
 .list {
@@ -704,11 +711,17 @@ textarea.input-text {
 }
 
 .data-table td {
-  padding: 15px 18px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border-light);
   color: var(--fg);
   vertical-align: middle;
   transition: background 0.15s var(--ease);
+  white-space: nowrap !important;
+}
+
+.data-table td.cell-wrap {
+  white-space: normal !important;
+  word-break: break-all;
 }
 
 .data-table tr:last-child td {
@@ -721,14 +734,19 @@ textarea.input-text {
 
 .table-empty {
   text-align: center;
-  padding: 90px 20px;
+  padding: 70px 20px;
   color: var(--fg-muted);
+  vertical-align: middle;
+}
+
+.empty-state-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  font-size: 0.95rem;
+  max-width: 440px;
+  margin: 0 auto;
 }
 
 /* ── 행사 서브 탭 (가로 캡슐 칩 / 세그먼트) ── */

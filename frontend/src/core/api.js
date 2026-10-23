@@ -29,10 +29,51 @@ export async function call(path, ...args) {
       return mockData.myEvents;
     case 'myevent.Service.ListReceived':
       return mockData.received;
-    case 'sent.Service.List':
-      return mockData.sentList;
-    case 'matching.Service.ListSummaries':
-      return mockData.matchingSummaries;
+    case 'sent.Service.List': {
+      const typeId = args[0] || 0;
+      const search = (args[1] || '').trim().toLowerCase();
+      let list = mockData.sentList || [];
+      if (typeId > 0) {
+        list = list.filter((item) => item.eventTypeId === typeId);
+      }
+      if (search) {
+        list = list.filter((item) => (item.name && item.name.toLowerCase().includes(search)) || (item.notes && item.notes.toLowerCase().includes(search)));
+      }
+      return list;
+    }
+    case 'matching.Service.ListSummaries': {
+      const filter = args[0] || 'all';
+      const search = (args[1] || '').trim().toLowerCase();
+      let list = mockData.matchingSummaries || [];
+      if (filter === 'need_pay') list = list.filter((s) => s.balance > 0);
+      if (filter === 'receive_back') list = list.filter((s) => s.balance < 0);
+      if (filter === 'balanced') list = list.filter((s) => s.balance === 0);
+      if (search) list = list.filter((s) => s.name.toLowerCase().includes(search));
+      return list;
+    }
+    case 'matching.Service.GetPersonDetail': {
+      const name = args[0] || '';
+      const target = (mockData.matchingSummaries || []).find((s) => s.name === name) || {
+        name,
+        receivedTotal: 100000,
+        sentTotal: 50000,
+        balance: 50000,
+      };
+      return {
+        summary: {
+          name: target.name,
+          receivedTotal: target.receivedTotal,
+          receivedCount: target.receivedTotal > 0 ? 1 : 0,
+          sentTotal: target.sentTotal,
+          sentCount: target.sentTotal > 0 ? 1 : 0,
+          balance: target.balance,
+        },
+        history: [
+          ...(target.receivedTotal > 0 ? [{ id: 1, type: 'received', eventDate: '2026-05-16', eventTitle: '우리 결혼식', amount: target.receivedTotal, notes: '직접 참석' }] : []),
+          ...(target.sentTotal > 0 ? [{ id: 2, type: 'sent', eventDate: '2026-02-20', eventTitle: '부친상 조의', amount: target.sentTotal, notes: '현금/봉투' }] : []),
+        ],
+      };
+    }
     case 'dashboard.Service.GetSummary':
       return {
         totalReceived: 350000,

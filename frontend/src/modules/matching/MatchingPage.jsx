@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../../core/api';
 import { useBusEvent } from '../../core/hooks';
 import { formatMoney, formatPhone, formatDate } from '../../core/format';
-import Modal from '../../ui/Modal';
-import { Search, ArrowLeftRight, Clock, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Users, Printer, ArrowUpDown, ArrowUp, ArrowDown, User, Scale, ArrowRight, X } from 'lucide-react';
+import { Search, ArrowLeftRight, Printer, ArrowUpDown, ArrowUp, ArrowDown, User, Scale, ArrowRight, X, Calendar, Sparkles } from 'lucide-react';
 
 export default function MatchingPage() {
   const [summaries, setSummaries] = useState([]);
@@ -38,8 +37,6 @@ export default function MatchingPage() {
   // 검색창 입력 시 정확히 일치하거나 1명인 경우 자동으로 1:1 대조 리포트 로드
   useEffect(() => {
     if (!search.trim()) {
-      setActivePerson(null);
-      setActivePersonDetail(null);
       return;
     }
     const matched = summaries.filter((s) => s.name.toLowerCase().includes(search.trim().toLowerCase()));
@@ -111,97 +108,120 @@ export default function MatchingPage() {
 
   // 통계 계산
   const needPayCount = summaries.filter((s) => s.balance > 0).length;
-  const needPayTotal = summaries.filter((s) => s.balance > 0).reduce((acc, cur) => acc + cur.balance, 0);
-
   const receiveBackCount = summaries.filter((s) => s.balance < 0).length;
-  const receiveBackTotal = summaries.filter((s) => s.balance < 0).reduce((acc, cur) => acc + Math.abs(cur.balance), 0);
+  const balancedCount = summaries.filter((s) => s.balance === 0).length;
 
   return (
     <div className="page-container">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className="page-title">주고받은 내역</h1>
+          <h1 className="page-title">경조사비 조회</h1>
           <p className="page-desc">
-            지인과 주고받은 경조사비를 사람별로 맞춰보고 1:1 대조 분석과 타임라인을 확인합니다.
+            지인 이름을 검색하여 내가 보낸 경조사비와 상대방이 낸 축의·부의금을 1:1로 비교 조회합니다.
           </p>
         </div>
         <button
           type="button"
           className="btn btn-ghost"
           onClick={() => window.print()}
-          title="사람별 매칭 현황 인쇄 또는 PDF 저장"
+          title="경조사비 조회 현황 인쇄 또는 PDF 저장"
         >
           <Printer size={16} /> 인쇄/PDF
         </button>
       </header>
 
-      {/* 요약 통계 카드 */}
-      <div className="grid grid-4" style={{ marginBottom: 16 }}>
-        <div className="card">
-          <div className="stat-label">교환 인원</div>
-          <div className="stat-value">{summaries.length}명</div>
-        </div>
-        <div className="card" style={{ borderColor: needPayCount > 0 ? 'var(--warn)' : 'var(--border-light)' }}>
-          <div className="stat-label" style={{ color: 'var(--warn)' }}>🟡 갚을 차례 (받음 &gt; 보냄)</div>
-          <div className="stat-value" style={{ color: 'var(--income)' }}>
-            {needPayCount}명 ({formatMoney(needPayTotal)})
+      {/* 🔍 지인 이름 중심의 직관적 검색 바 */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          marginBottom: 16,
+          background: '#ffffff',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={18} style={{ position: 'absolute', left: 14, top: 14, color: 'var(--primary)' }} />
+            <input
+              type="text"
+              className="input-text"
+              placeholder="조회할 지인의 이름을 입력하세요 (예: 홍길동, 010...)"
+              style={{
+                paddingLeft: 42,
+                paddingRight: search ? 36 : 14,
+                fontSize: '1.02rem',
+                fontWeight: 600,
+                height: 46,
+                borderColor: 'var(--primary-light)',
+              }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: 13,
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--fg-muted)',
+                  cursor: 'pointer',
+                }}
+                title="검색어 지우기"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
+          {search && (
+            <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+              검색 결과: <strong>{summaries.length}</strong>명
+            </div>
+          )}
         </div>
-        <div className="card">
-          <div className="stat-label" style={{ color: 'var(--info)' }}>🔵 받을 차례 (보냄 &gt; 받음)</div>
-          <div className="stat-value" style={{ color: 'var(--expense)' }}>
-            {receiveBackCount}명 ({formatMoney(receiveBackTotal)})
-          </div>
-        </div>
-        <div className="card">
-          <div className="stat-label">🟢 균형 완료</div>
-          <div className="stat-value">{summaries.filter((s) => s.balance === 0).length}명</div>
-        </div>
-      </div>
 
-      {/* 필터 탭 & 사람 이름 빠른 검색창 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* 간결한 분류 칩 (필요 시 선택) */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)', marginRight: 4 }}>빠른 보기:</span>
           <button
             type="button"
             className={`btn-chip ${filter === 'all' ? 'btn' : ''}`}
             onClick={() => setFilter('all')}
+            style={{ fontSize: '0.82rem', padding: '3px 10px' }}
           >
-            전체 보기
+            전체 ({summaries.length}명)
           </button>
           <button
             type="button"
             className={`btn-chip ${filter === 'need_pay' ? 'btn' : ''}`}
             onClick={() => setFilter('need_pay')}
+            style={{ fontSize: '0.82rem', padding: '3px 10px' }}
           >
-            🟡 갚을 차례만 보기
+            🟡 갚을 차례 ({needPayCount}명)
           </button>
           <button
             type="button"
             className={`btn-chip ${filter === 'receive_back' ? 'btn' : ''}`}
             onClick={() => setFilter('receive_back')}
+            style={{ fontSize: '0.82rem', padding: '3px 10px' }}
           >
-            🔵 받을 차례만 보기
+            🔵 받을 차례 ({receiveBackCount}명)
           </button>
           <button
             type="button"
             className={`btn-chip ${filter === 'balanced' ? 'btn' : ''}`}
             onClick={() => setFilter('balanced')}
+            style={{ fontSize: '0.82rem', padding: '3px 10px' }}
           >
-            🟢 균형 인원 보기
+            🟢 균형 ({balancedCount}명)
           </button>
-        </div>
-
-        <div style={{ position: 'relative', width: 300 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--fg-muted)' }} />
-          <input
-            type="text"
-            className="input-text"
-            placeholder="사람 이름으로 1:1 대조 검색..."
-            style={{ paddingLeft: 36 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
         </div>
       </div>
 
@@ -220,7 +240,7 @@ export default function MatchingPage() {
                   {activePerson.phone && <span className="mono" style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>{formatPhone(activePerson.phone)}</span>}
                 </div>
                 <div style={{ fontSize: '0.86rem', color: 'var(--fg-muted)', marginTop: 2 }}>
-                  1:1 맞춤 경조사비 상호 대조 분석 리포트
+                  1:1 경조사비 맞춤 대조 및 교환 일지 리포트
                 </div>
               </div>
             </div>
@@ -229,7 +249,7 @@ export default function MatchingPage() {
             </button>
           </div>
 
-          {/* 3분할 상호 대조 레이아웃 (토스 저울 비교 스타일) */}
+          {/* 3분할 상호 대조 레이아웃 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 1fr', gap: 14, alignItems: 'stretch', marginBottom: 20 }}>
             {/* 좌측: 내가 보낸 돈 */}
             <div style={{ background: 'var(--bg-sunken)', padding: 18, borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -258,39 +278,45 @@ export default function MatchingPage() {
               </div>
             </div>
 
-            {/* 중앙: 대조 저울 및 상태 */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '10px 0' }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--primary-subtle)', display: 'grid', placeItems: 'center', marginBottom: 8 }}>
-                <Scale size={22} style={{ color: 'var(--primary)' }} />
+            {/* 중앙: 대조 저울 및 판정 */}
+            <div style={{ background: '#ffffff', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', padding: '16px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 6 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-sunken)', display: 'grid', placeItems: 'center', color: 'var(--fg-subtle)' }}>
+                <Scale size={18} />
               </div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--fg-muted)', marginBottom: 4 }}>
-                차액 현황
-              </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: activePersonDetail.summary.balance > 0 ? 'var(--income)' : activePersonDetail.summary.balance < 0 ? 'var(--expense)' : 'var(--fg)' }}>
-                {activePersonDetail.summary.balance > 0 ? `+${formatMoney(activePersonDetail.summary.balance)}` : activePersonDetail.summary.balance < 0 ? `-${formatMoney(Math.abs(activePersonDetail.summary.balance))}` : '0원'}
-              </div>
-              <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', fontWeight: 600 }}>주고받은 차액</div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 {activePersonDetail.summary.balance > 0 ? (
-                  <span className="badge" style={{ background: '#fff7ed', color: '#ea580c', fontSize: '0.74rem' }}>
-                    갚을 차례
-                  </span>
+                  <span style={{ color: 'var(--income)' }}>+{formatMoney(activePersonDetail.summary.balance)}</span>
                 ) : activePersonDetail.summary.balance < 0 ? (
-                  <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.74rem' }}>
-                    받을 차례
-                  </span>
+                  <span style={{ color: 'var(--expense)' }}>-{formatMoney(Math.abs(activePersonDetail.summary.balance))}</span>
                 ) : (
-                  <span className="badge badge-ok" style={{ fontSize: '0.74rem' }}>
-                    균형 완료
+                  <span style={{ color: 'var(--fg-muted)' }}>0원</span>
+                )}
+              </div>
+              <div>
+                {activePersonDetail.summary.balance > 0 && (
+                  <span className="badge" style={{ background: '#fff7ed', color: '#ea580c', fontSize: '0.76rem' }}>
+                    🟡 갚을 차례
+                  </span>
+                )}
+                {activePersonDetail.summary.balance < 0 && (
+                  <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: '0.76rem' }}>
+                    🔵 받을 차례
+                  </span>
+                )}
+                {activePersonDetail.summary.balance === 0 && (
+                  <span className="badge badge-ok" style={{ fontSize: '0.76rem' }}>
+                    🟢 균형 완료
                   </span>
                 )}
               </div>
             </div>
 
-            {/* 우측: 상대방이 내게 낸 돈 */}
+            {/* 우측: 상대방이 낸 돈 */}
             <div style={{ background: 'var(--bg-sunken)', padding: 18, borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--income)' }}>📥 {activePerson.name} 님이 낸 돈 (수입)</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--income)' }}>📥 상대방이 낸 축의·부의금 (수입)</span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', fontWeight: 600 }}>총 {activePersonDetail.summary.receivedCount}건</span>
                 </div>
                 <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--income)', letterSpacing: '-0.02em' }}>
@@ -313,53 +339,123 @@ export default function MatchingPage() {
               </div>
             </div>
           </div>
+
+          {/* 하단 시간순 전체 교환 일지 */}
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <Calendar size={15} style={{ color: 'var(--primary)' }} />
+              <strong style={{ fontSize: '0.9rem', color: 'var(--fg)' }}>전체 주고받은 타임라인 일지</strong>
+            </div>
+            {activePersonDetail.history.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--fg-muted)', fontSize: '0.88rem' }}>
+                교환된 내역이 없습니다.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activePersonDetail.history.map((item, idx) => (
+                  <div
+                    key={`${item.type}-${item.id}-${idx}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      background: 'var(--bg-sunken)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.88rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span
+                        className={`badge ${item.type === 'received' ? 'badge-ok' : 'badge-err'}`}
+                        style={{ fontSize: '0.78rem' }}
+                      >
+                        {item.type === 'received' ? '📥 받음' : '📤 보냄'}
+                      </span>
+                      <strong style={{ color: 'var(--fg)' }}>{item.eventTitle}</strong>
+                      <span style={{ color: 'var(--fg-muted)', fontSize: '0.82rem' }}>{formatDate(item.eventDate)}</span>
+                      {item.notes && <span style={{ color: 'var(--fg-subtle)', fontSize: '0.8rem' }}>({item.notes})</span>}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: '0.98rem', color: item.type === 'received' ? 'var(--income)' : 'var(--expense)' }}>
+                      {item.type === 'received' ? '+' : '-'}{formatMoney(item.amount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* 매칭 데이터 테이블 */}
+      {/* 전체 인원 목록 테이블 */}
       <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
-              <th onClick={() => requestSort('name')} style={{ width: 120, cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('name')} style={{ minWidth: 100, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   이름 {renderSortIcon('name')}
                 </div>
               </th>
-              <th style={{ width: 130 }}>전화번호</th>
-              <th onClick={() => requestSort('relationship')} style={{ width: 100, cursor: 'pointer', userSelect: 'none' }}>
+              <th style={{ minWidth: 135 }}>전화번호</th>
+              <th onClick={() => requestSort('relationship')} style={{ minWidth: 85, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   관계 {renderSortIcon('relationship')}
                 </div>
               </th>
-              <th onClick={() => requestSort('receivedTotal')} style={{ width: 160, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('receivedTotal')} style={{ minWidth: 125, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                  내 경조사에 낸 돈 {renderSortIcon('receivedTotal')}
+                  상대방이 낸 돈 (받음) {renderSortIcon('receivedTotal')}
                 </div>
               </th>
-              <th onClick={() => requestSort('sentTotal')} style={{ width: 160, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('sentTotal')} style={{ minWidth: 125, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                  내가 보낸 돈 {renderSortIcon('sentTotal')}
+                  내가 보낸 돈 (지출) {renderSortIcon('sentTotal')}
                 </div>
               </th>
-              <th onClick={() => requestSort('balance')} style={{ width: 150, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('balance')} style={{ minWidth: 130, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                  차액 (손익) {renderSortIcon('balance')}
+                  차액 저울 {renderSortIcon('balance')}
                 </div>
               </th>
-              <th onClick={() => requestSort('balance')} style={{ width: 130, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('balance')} style={{ minWidth: 110, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   상태 {renderSortIcon('balance')}
                 </div>
               </th>
-              <th style={{ width: 110, textAlign: 'center' }}>1:1 대조</th>
+              <th style={{ minWidth: 95, textAlign: 'center' }}>조회</th>
             </tr>
           </thead>
           <tbody>
             {sortedSummaries.length === 0 ? (
               <tr>
                 <td colSpan={8} className="table-empty">
-                  {search ? '검색된 매칭 인원이 없습니다.' : '아직 나의 경조사 또는 타인 경조사에 등록된 인원이 없습니다.'}
+                  <div className="empty-state-box">
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--bg-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--fg-muted)',
+                      }}
+                    >
+                      <Search size={24} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1.02rem', color: 'var(--fg)', marginBottom: 4 }}>
+                        {search ? `'${search}' 검색된 지인이 없습니다.` : '등록된 경조사 인원이 없습니다.'}
+                      </div>
+                      <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)' }}>
+                        {search
+                          ? '이름 또는 전화번호를 다시 확인해 보세요.'
+                          : '나의 경조사나 타인 경조사에 내역을 등록하면 자동으로 1:1 대조가 완성됩니다.'}
+                      </div>
+                    </div>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -433,7 +529,7 @@ export default function MatchingPage() {
                         }}
                         title="1:1 상호 대조 분석 리포트 보기"
                       >
-                        <ArrowLeftRight size={13} /> 1:1 대조
+                        <ArrowLeftRight size={13} /> 상세 조회
                       </button>
                     </td>
                   </tr>

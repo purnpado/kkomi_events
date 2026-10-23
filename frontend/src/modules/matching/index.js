@@ -3,8 +3,8 @@ import MatchingPage from './MatchingPage';
 
 registerModule({
   id: 'matching',
-  title: '주고받은 내역',
-  icon: '⚖️',
+  title: '경조사비 조회',
+  icon: '🔍',
   order: 300,
   section: 'main',
   Page: MatchingPage,

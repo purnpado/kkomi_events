@@ -391,57 +391,92 @@ export default function SentPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th onClick={() => requestSort('eventDate')} style={{ width: 120, cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('eventDate')} style={{ minWidth: 110, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   날짜 {renderSortIcon('eventDate')}
                 </div>
               </th>
-              <th onClick={() => requestSort('name')} style={{ width: 110, cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('name')} style={{ minWidth: 90, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   이름 {renderSortIcon('name')}
                 </div>
               </th>
-              <th style={{ width: 130 }}>전화번호</th>
-              <th onClick={() => requestSort('relationship')} style={{ width: 100, cursor: 'pointer', userSelect: 'none' }}>
+              <th style={{ minWidth: 135 }}>전화번호</th>
+              <th onClick={() => requestSort('relationship')} style={{ minWidth: 85, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   관계 {renderSortIcon('relationship')}
                 </div>
               </th>
-              <th onClick={() => requestSort('eventTypeName')} style={{ width: 120, cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('eventTypeName')} style={{ minWidth: 115, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   경조사 종류 {renderSortIcon('eventTypeName')}
                 </div>
               </th>
-              <th onClick={() => requestSort('amount')} style={{ width: 130, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('amount')} style={{ minWidth: 120, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                   금액 {renderSortIcon('amount')}
                 </div>
               </th>
-              <th onClick={() => requestSort('paymentMethod')} style={{ width: 110, cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('paymentMethod')} style={{ minWidth: 95, cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   지출 수단 {renderSortIcon('paymentMethod')}
                 </div>
               </th>
-              <th onClick={() => requestSort('attended')} style={{ width: 100, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => requestSort('attended')} style={{ minWidth: 95, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   참석 여부 {renderSortIcon('attended')}
                 </div>
               </th>
-              {isSharedMode && <th style={{ width: 100 }}>구분</th>}
+              {isSharedMode && <th style={{ minWidth: 85 }}>구분</th>}
               {customFields.map((f) => (
-                <th key={f.id} style={{ minWidth: 90 }}>
+                <th key={f.id} style={{ minWidth: 95 }}>
                   {f.fieldName}
                 </th>
               ))}
-              <th>비고</th>
-              <th style={{ width: 100, textAlign: 'center' }}>관리</th>
+              <th style={{ minWidth: 140 }}>비고</th>
+              <th style={{ minWidth: 90, textAlign: 'center' }}>관리</th>
             </tr>
           </thead>
           <tbody>
             {sortedSentList.length === 0 ? (
               <tr>
-                <td colSpan={(isSharedMode ? 11 : 10) + customFields.length} className="table-empty">
-                  {search ? '검색된 내역이 없습니다.' : '등록된 보낸 내역이 없습니다. [보낸 내역 등록] 버튼을 눌러 추가해보세요.'}
+                <td colSpan={10 + (isSharedMode ? 1 : 0) + customFields.length} className="table-empty">
+                  <div className="empty-state-box">
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: '50%',
+                        background: 'var(--bg-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--fg-muted)',
+                      }}
+                    >
+                      <Send size={24} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1.02rem', color: 'var(--fg)', marginBottom: 4 }}>
+                        {search ? `'${search}' 검색된 내역이 없습니다.` : '등록된 보낸 내역이 없습니다.'}
+                      </div>
+                      <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)' }}>
+                        {search
+                          ? '다른 검색어로 다시 검색해보세요.'
+                          : '지인의 결혼식, 돌잔치, 장례식 등 경조사비를 기록해보세요.'}
+                      </div>
+                    </div>
+                    {!search && (
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={openCreate}
+                        style={{ marginTop: 6 }}
+                      >
+                        <Send size={15} /> 보낸 내역 등록
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -478,7 +513,7 @@ export default function SentPage() {
                       </td>
                     );
                   })}
-                  <td style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
+                  <td className="cell-wrap" style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
                       <button
