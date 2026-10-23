@@ -1,47 +1,72 @@
 /* ─────────────────────────────────────────────
-   꼬미경조사 디자인 토큰 (색, 글꼴, 간격, 그림자)
-   모든 화면은 이 변수만 사용합니다.
+   꼬미경조사 디자인 토큰 (토스 스타일 미니멀 핀테크)
+   화사하고 정돈된 여백, 큼직한 숫자, 부드러운 캡슐 인터랙션
    ───────────────────────────────────────────── */
 :root {
-  /* 글꼴: 프리텐다드 가변 폰트 1순위 */
+  /* 글꼴: 프리텐다드 가변 폰트 최우선 */
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --font-scale: 1;
 
-  /* 브랜드 색: 따뜻한 살구 + 깊은 자두 */
-  --brand-50: hsl(18 100% 97%);
-  --brand-100: hsl(18 95% 92%);
-  --brand-300: hsl(16 88% 76%);
-  --brand-500: hsl(12 80% 62%);
-  --brand-600: hsl(10 70% 54%);
-  --brand-700: hsl(8 62% 44%);
-  --plum-500: hsl(320 32% 42%);
-  --plum-700: hsl(320 36% 28%);
+  /* 핀테크 프라이머리 색상 (토스 블루 & 꼬미 산뜻 악센트) */
+  --primary: #3182f6;
+  --primary-hover: #1b64da;
+  --primary-light: #e8f3ff;
+  --primary-subtle: #f2f7ff;
 
-  /* 의미 색 */
-  --income: hsl(158 52% 38%);   /* 받은 돈 */
-  --expense: hsl(352 66% 52%);  /* 보낸 돈 */
-  --warn: hsl(40 92% 50%);
-  --info: hsl(212 70% 52%);
+  --brand-50: #f2f7ff;
+  --brand-100: #e8f3ff;
+  --brand-300: #93c5fd;
+  --brand-500: #3182f6;
+  --brand-600: #1b64da;
+  --brand-700: #1d4ed8;
 
-  /* 라이트 테마 */
-  --bg: hsl(36 40% 97%);
-  --bg-elev: hsl(0 0% 100%);
-  --bg-sunken: hsl(34 30% 93%);
-  --sidebar-bg: linear-gradient(180deg, hsl(320 30% 24%) 0%, hsl(330 34% 17%) 100%);
-  --sidebar-fg: hsl(30 40% 92%);
-  --sidebar-muted: hsl(320 14% 70%);
-  --fg: hsl(320 18% 16%);
-  --fg-muted: hsl(320 8% 44%);
-  --border: hsl(30 20% 87%);
-  --ring: hsl(12 80% 62% / 0.45);
+  /* 꼬미 캐릭터 따뜻한 온기 악센트 (골드/오렌지) */
+  --accent-peach: #ff6f42;
+  --accent-peach-light: #fff2ed;
+  --accent-gold: #f59e0b;
 
-  /* 모양 */
-  --radius-sm: 8px;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --shadow-sm: 0 1px 2px hsl(320 30% 20% / 0.06);
-  --shadow: 0 4px 16px hsl(320 30% 20% / 0.08), 0 1px 3px hsl(320 30% 20% / 0.06);
-  --shadow-lg: 0 18px 48px hsl(320 30% 20% / 0.16);
+  /* 핀테크 의미 색 (수입 / 지출 / 균형) */
+  --income: #00B06B;          /* 받은 돈: 신뢰와 풍요의 핀테크 그린 */
+  --income-light: #e6f7f0;
+  --expense: #F04452;         /* 보낸 돈: 산뜻하고 세련된 토스 레드 */
+  --expense-light: #feecee;
+  --warn: #ff9800;
+  --info: #3182f6;
+
+  /* 라이트 테마: 토스 고유의 맑고 정돈된 아이스 그레이 & 순백 */
+  --bg: #f4f6fa;               /* 전체 앱 배경 */
+  --bg-elev: #ffffff;          /* 플로팅 순백 카드 */
+  --bg-sunken: #edf1f7;        /* 인풋, 비활성 칩, 연한 섹션 */
+  --bg-subtle: #f8fafc;
+
+  /* 사이드바: 칙칙한 어둠을 벗어나 밝고 깨끗한 모던 독(Dock) */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #eaedf2;
+  --sidebar-fg: #333d4b;
+  --sidebar-muted: #8b95a1;
+  --sidebar-active-bg: #e8f3ff;
+  --sidebar-active-fg: #1b64da;
+
+  /* 본문 텍스트: 토스 고유 슬레이트 블랙 & 그레이 계층 */
+  --fg: #191f28;               /* 짙은 본문 텍스트 */
+  --fg-muted: #4e5968;         /* 보조 설명 텍스트 */
+  --fg-subtle: #8b95a1;        /* 연한 라벨 텍스트 */
+  --border: #e5e8eb;           /* 섬세한 초미세 보더 */
+  --border-light: #f2f4f6;
+  --ring: rgba(49, 130, 246, 0.35);
+
+  /* 모양: 넉넉하고 친근한 둥근 모서리 */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  /* 부드러운 핀테크 그림자 (테두리 대신 깊이감) */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.04), 0 2px 6px rgba(15, 23, 42, 0.02);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.07);
+  --shadow-pop: 0 20px 50px rgba(0, 0, 0, 0.12);
 
   /* 간격 */
   --space-1: 4px;
@@ -51,17 +76,27 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* 마이크로 인터랙션 모션 */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 [data-theme='dark'] {
-  --bg: hsl(320 14% 9%);
-  --bg-elev: hsl(320 12% 13%);
-  --bg-sunken: hsl(320 12% 7%);
-  --sidebar-bg: linear-gradient(180deg, hsl(320 18% 12%) 0%, hsl(330 20% 8%) 100%);
-  --fg: hsl(30 30% 93%);
-  --fg-muted: hsl(320 8% 66%);
-  --border: hsl(320 10% 22%);
-  --shadow: 0 4px 16px hsl(0 0% 0% / 0.35);
-  --shadow-lg: 0 18px 48px hsl(0 0% 0% / 0.5);
+  --bg: #111418;
+  --bg-elev: #1a1e24;
+  --bg-sunken: #14171c;
+  --bg-subtle: #1e232b;
+  --sidebar-bg: #16191f;
+  --sidebar-border: #232832;
+  --sidebar-fg: #f2f4f6;
+  --sidebar-muted: #8b95a1;
+  --sidebar-active-bg: rgba(49, 130, 246, 0.15);
+  --sidebar-active-fg: #60a5fa;
+  --fg: #f9fafb;
+  --fg-muted: #b0b8c1;
+  --fg-subtle: #6b7684;
+  --border: #262c36;
+  --border-light: #1e242d;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
 }

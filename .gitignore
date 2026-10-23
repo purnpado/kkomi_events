@@ -14,6 +14,7 @@ data/
 backup/
 logs/
 *.log
+*.xlsx
 
 # ── 비밀 정보 ──
 .env

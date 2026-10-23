@@ -81,28 +81,28 @@ export function MonthlyBarChart({ data = [], height = 240 }) {
 
       if (rBarHeight > 0 && isFinite(rBarY)) {
         const gradIncome = ctx.createLinearGradient(0, rBarY, 0, rBarY + rBarHeight);
-        gradIncome.addColorStop(0, '#10B981');
-        gradIncome.addColorStop(1, '#059669');
+        gradIncome.addColorStop(0, '#00B06B');
+        gradIncome.addColorStop(1, '#00965b');
         ctx.fillStyle = gradIncome;
-        roundRect(ctx, rBarX, rBarY, barWidth, rBarHeight, 4);
+        roundRect(ctx, rBarX, rBarY, barWidth, rBarHeight, 6);
       }
 
-      // 2. 보낸 돈 막대 (살구/코랄/지출)
+      // 2. 보낸 돈 막대 (토스 코랄 레드/지출)
       const sBarHeight = Math.max(0, (snt / maxVal) * chartHeight);
       const sBarX = groupCenterX + 3;
       const sBarY = paddingTop + chartHeight - sBarHeight;
 
       if (sBarHeight > 0 && isFinite(sBarY)) {
         const gradExpense = ctx.createLinearGradient(0, sBarY, 0, sBarY + sBarHeight);
-        gradExpense.addColorStop(0, '#F43F5E');
-        gradExpense.addColorStop(1, '#E11D48');
+        gradExpense.addColorStop(0, '#F04452');
+        gradExpense.addColorStop(1, '#d6303e');
         ctx.fillStyle = gradExpense;
-        roundRect(ctx, sBarX, sBarY, barWidth, sBarHeight, 4);
+        roundRect(ctx, sBarX, sBarY, barWidth, sBarHeight, 6);
       }
 
       // 월 레이블
-      ctx.fillStyle = '#666';
-      ctx.font = '12px Pretendard, sans-serif';
+      ctx.fillStyle = '#8b95a1';
+      ctx.font = '600 12px Pretendard, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(d.month || '', groupCenterX, h - 14);
     });
@@ -110,13 +110,13 @@ export function MonthlyBarChart({ data = [], height = 240 }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginBottom: 8, fontSize: '0.82rem' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 3, background: '#10B981', display: 'inline-block' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, marginBottom: 12, fontSize: '0.85rem', fontWeight: 600 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#00B06B', background: '#e6f7f0', padding: '3px 10px', borderRadius: 9999 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00B06B', display: 'inline-block' }} />
           받은 돈 (수입)
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 3, background: '#F43F5E', display: 'inline-block' }} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#F04452', background: '#feecee', padding: '3px 10px', borderRadius: 9999 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F04452', display: 'inline-block' }} />
           보낸 돈 (지출)
         </span>
       </div>

@@ -62,6 +62,26 @@ export default function App() {
             </div>
           ))}
         </nav>
+        <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-sunken)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--income)' }} />
+              100% 로컬 오프라인
+            </div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--fg-muted)' }}>
+              소중한 개인정보가 내 PC에만 안전하게 보관됩니다.
+            </div>
+          </div>
+        </div>
       </aside>
       <main className="main">{active ? <active.Page /> : <p>메뉴를 선택하세요.</p>}</main>
       <ToastProvider />
