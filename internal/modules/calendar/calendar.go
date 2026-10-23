@@ -405,6 +405,12 @@ func (s *Service) fetchFromAPI(apiKey, calendarId string) ([]CalendarEvent, erro
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("캘린더를 찾을 수 없습니다 (404 오류).\n• 원인 1: 단순 API 키 방식에서는 'primary' 대신 본인의 구글 이메일(예: abc@gmail.com)을 캘린더 ID에 입력해야 합니다.\n• 원인 2: 구글 보안 정책상 개인 비공개 캘린더는 단순 API 키로 조회가 차단됩니다.\n👉 해결책: 개인 캘린더 연동은 상단의 '[간편] iCal 비공개 URL' 방식을 사용하시면 가장 안전하고 정확하게 연동됩니다.")
+		}
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("구글 API 인증/권한 오류 (HTTP %d).\nGoogle Cloud Console에서 'Google Calendar API'가 사용 설정되어 있는지 확인해주세요.", resp.StatusCode)
+		}
 		return nil, fmt.Errorf("구글 API 오류 (HTTP %d): %s", resp.StatusCode, string(body))
 	}
 

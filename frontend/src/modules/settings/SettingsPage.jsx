@@ -308,8 +308,8 @@ export default function SettingsPage() {
               onClick={() => handleModeChange('api')}
             >
               <div>
-                <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>🔵 [고급] Google Calendar API Key</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 2 }}>구글 공식 개발자 API 연동</div>
+                <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>🔵 [고급] Google Calendar API Key (공개 캘린더용)</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 2 }}>구글 공식 개발자 API 연동 (비공개 개인 일정은 iCal 권장)</div>
               </div>
             </button>
           </div>
@@ -385,7 +385,7 @@ export default function SettingsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Google Cloud API Key *</span>
+                  <span>Google Calendar API Key (구글 캘린더 API 키) *</span>
                   <button
                     type="button"
                     onClick={() => api.calendar.openUrl('https://console.cloud.google.com/apis/credentials')}
@@ -417,11 +417,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">캘린더 ID</label>
+                <label className="form-label">캘린더 ID (Gmail 주소)</label>
                 <input
                   type="text"
                   className="input-text"
-                  placeholder="primary"
+                  placeholder="예: teacher@gmail.com"
                   value={calConfig.calendarId}
                   onChange={(e) => setCalConfig({ ...calConfig, calendarId: e.target.value })}
                   style={{ fontSize: '0.9rem' }}
@@ -429,19 +429,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', lineHeight: 1.6, marginBottom: 16 }}>
-              💡 <strong>안내:</strong>{' '}
-              <a
-                href="#open-gcp-console"
-                onClick={(e) => {
-                  e.preventDefault();
-                  api.calendar.openUrl('https://console.cloud.google.com/apis/credentials');
-                }}
-                style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-              >
-                Google Cloud Console <ExternalLink size={12} />
-              </a>
-              에서 Google Calendar API를 사용 설정한 후 생성한 API 키를 입력하세요. (기본 캘린더 ID는 <code>primary</code>)
+            <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', lineHeight: 1.6, marginBottom: 16, background: 'var(--bg-card)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--fg-main)', marginBottom: 4 }}>
+                💡 <strong>구글 캘린더 API 키 설정 안내 및 404 오류 주의사항:</strong>
+              </div>
+              <div>• <strong>명칭 안내:</strong> 구글 클라우드 콘솔에서 발급받지만 실제 사용되는 서비스는 <strong>Google Calendar API</strong> 키입니다.</div>
+              <div>• <strong>캘린더 ID:</strong> <code>primary</code>는 로그인 세션(OAuth2)이 없으면 구글에서 인식하지 못해 <strong>404 오류</strong>가 발생합니다. 본인의 구글 이메일(예: <code>xxx@gmail.com</code>)을 입력해야 합니다.</div>
+              <div>• <strong>개인 캘린더 권장:</strong> 구글 보안 정책상 <strong>비공개 개인 캘린더</strong>는 단순 API 키로 조회가 차단됩니다. 개인 경조사 일정은 상단의 <strong>[간편] iCal 비공개 URL</strong> 방식을 사용하시면 별도 설정 없이 바로 안전하게 연동됩니다.</div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
