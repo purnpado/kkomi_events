@@ -129,6 +129,31 @@ export async function call(path, ...args) {
         syncCount: 2,
       };
     }
+    case 'calendar.Service.SyncNow': {
+      const nowStr = new Date().toLocaleString('ko-KR');
+      mockData.settings.calendar_last_sync_at = nowStr;
+      mockData.settings.calendar_last_sync_msg = '성공: 구글 캘린더에서 경조사 관련 일정 2건을 가져왔습니다.';
+      return {
+        mode: mockData.settings.calendar_mode || 'ical',
+        icalUrl: mockData.settings.calendar_ical_url || '',
+        apiKey: mockData.settings.calendar_api_key || '',
+        calendarId: mockData.settings.calendar_id || 'primary',
+        lastSyncAt: nowStr,
+        lastSyncMsg: mockData.settings.calendar_last_sync_msg,
+        syncCount: 2,
+      };
+    }
+    case 'trash.Service.List':
+      return [
+        { id: 1, itemType: 'sent', typeLabel: '보낸 돈 (타인 경조사)', title: '테스트 지인', subtitle: '[결혼] 친구', eventDate: '2026-04-10', amount: 100000, deletedAt: '2026-10-23 20:00:00' },
+      ];
+    case 'trash.Service.GetCount':
+      return 1;
+    case 'trash.Service.Restore':
+    case 'trash.Service.RestoreAll':
+    case 'trash.Service.Purge':
+    case 'trash.Service.PurgeAll':
+      return true;
     case 'calendar.Service.OpenURL':
       window.open(args[0], '_blank');
       return true;
@@ -218,6 +243,15 @@ export const api = {
     getConfig: () => call('calendar.Service.GetConfig'),
     saveConfig: (mode, icalUrl, apiKey, calendarId) => call('calendar.Service.SaveConfig', mode, icalUrl, apiKey, calendarId),
     testAndSync: (mode, icalUrl, apiKey, calendarId) => call('calendar.Service.TestAndSync', mode, icalUrl, apiKey, calendarId),
+    syncNow: () => call('calendar.Service.SyncNow'),
     openUrl: (url) => call('calendar.Service.OpenURL', url),
+  },
+  trash: {
+    list: () => call('trash.Service.List'),
+    getCount: () => call('trash.Service.GetCount'),
+    restore: (itemType, id) => call('trash.Service.Restore', itemType, id),
+    restoreAll: () => call('trash.Service.RestoreAll'),
+    purge: (itemType, id) => call('trash.Service.Purge', itemType, id),
+    purgeAll: () => call('trash.Service.PurgeAll'),
   },
 };

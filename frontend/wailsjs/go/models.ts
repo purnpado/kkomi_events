@@ -622,3 +622,34 @@ export namespace system {
 
 }
 
+export namespace trash {
+	
+	export class TrashItem {
+	    id: number;
+	    itemType: string;
+	    typeLabel: string;
+	    title: string;
+	    subtitle: string;
+	    eventDate: string;
+	    amount: number;
+	    deletedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TrashItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.itemType = source["itemType"];
+	        this.typeLabel = source["typeLabel"];
+	        this.title = source["title"];
+	        this.subtitle = source["subtitle"];
+	        this.eventDate = source["eventDate"];
+	        this.amount = source["amount"];
+	        this.deletedAt = source["deletedAt"];
+	    }
+	}
+
+}
+

@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -99,9 +100,28 @@ func (m *Module) Binding() any {
 	return m.service
 }
 
+// OnStartup 은 프로그램 실행 시 연동된 구글 캘린더 일정을 백그라운드에서 자동 동기화합니다.
+func (m *Module) OnStartup(ctx context.Context) {
+	go func() {
+		time.Sleep(1500 * time.Millisecond) // 창이 뜬 후 백그라운드 동기화
+		if m.service != nil {
+			_, _ = m.service.SyncNow()
+		}
+	}()
+}
+
 // GetService 는 서비스 싱글톤을 반환합니다.
 func (m *Module) GetService() *Service {
 	return m.service
+}
+
+// SyncNow 는 저장된 설정을 바탕으로 지금 즉시 구글 캘린더 일정을 새로고침하여 가져옵니다.
+func (s *Service) SyncNow() (*SyncConfig, error) {
+	cfg, err := s.GetConfig()
+	if err != nil || cfg == nil || cfg.Mode == "" || cfg.Mode == "none" {
+		return cfg, fmt.Errorf("구글 캘린더 연동이 설정되어 있지 않습니다. 설정에서 먼저 연동해 주세요.")
+	}
+	return s.TestAndSync(cfg.Mode, cfg.IcalURL, cfg.APIKey, cfg.CalendarID)
 }
 
 // GetConfig 는 현재 구글 캘린더 연동 설정을 조회합니다.
@@ -321,8 +341,8 @@ func (s *Service) fetchFromIcal(icalUrl string) ([]CalendarEvent, error) {
 	return parseIcsContent(string(body))
 }
 
-// 경조사 관련 키워드 정규식 (결혼, 돌잔치, 장례, 생신, 회갑, 집들이, 개업, 부조, 축의 등)
-var eventKeywordRegex = regexp.MustCompile(`(결혼|웨딩|돌잔치|장례|부고|부친상|모친상|조문|회갑|칠순|고희|집들이|개업|경조사|축의|부의|생일|생신)`)
+// 경조사 관련 키워드 정규식 (결혼, 돌잔치, 장례, 생신, 회갑, 집들이, 개업, 부조, 축의, 조의, 문상, 추모 등)
+var eventKeywordRegex = regexp.MustCompile(`(?i)(결혼|웨딩|돌잔치|장례|부고|부친상|모친상|빙부상|빙모상|조문|조의|문상|영결식|발인|추모|기일|제사|회갑|환갑|칠순|고희|팔순|구순|집들이|개업|경조사|축의|부의|생일|생신|돌)`)
 
 func parseIcsContent(content string) ([]CalendarEvent, error) {
 	// 줄바꿈 정규화

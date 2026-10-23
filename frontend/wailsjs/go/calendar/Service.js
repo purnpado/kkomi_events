@@ -18,6 +18,10 @@ export function SaveConfig(arg1, arg2, arg3, arg4) {
   return window['go']['calendar']['Service']['SaveConfig'](arg1, arg2, arg3, arg4);
 }
 
+export function SyncNow() {
+  return window['go']['calendar']['Service']['SyncNow']();
+}
+
 export function TestAndSync(arg1, arg2, arg3, arg4) {
   return window['go']['calendar']['Service']['TestAndSync'](arg1, arg2, arg3, arg4);
 }

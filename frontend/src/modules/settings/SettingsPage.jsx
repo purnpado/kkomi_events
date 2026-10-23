@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw } from 'lucide-react';
+import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import TrashModal from '../../ui/TrashModal';
 
 export default function SettingsPage() {
+  const [trashOpen, setTrashOpen] = useState(false);
   const [settings, setSettings] = useState({
     theme: 'light',
     usage_mode: 'solo',
@@ -229,7 +231,15 @@ export default function SettingsPage() {
             <li>삭제한 항목(휴지통): 직접 삭제한 쓰레기 데이터만 <strong>{settings.trash_days}일</strong> 보관 후 영구 정리 (정상 등록된 경조사는 영구 보관)</li>
             <li>자동 백업 파일 보관: 전체 DB 백업 파일 최근 <strong>{settings.backup_keep}개</strong> 보관 (프로그램 종료 시 스냅샷 자동 생성)</li>
           </ul>
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setTrashOpen(true)}
+              title="삭제한 축의금, 부의금, 행사 목록을 확인하고 다시 복원합니다."
+            >
+              <Trash2 size={15} /> 휴지통 열기 (복원 및 정리)
+            </button>
             <button
               type="button"
               className="btn btn-ghost"
@@ -458,6 +468,9 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* 휴지통 모달 */}
+      <TrashModal isOpen={trashOpen} onClose={() => setTrashOpen(false)} />
     </>
   );
 }

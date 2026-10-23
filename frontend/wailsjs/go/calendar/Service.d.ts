@@ -10,4 +10,6 @@ export function OpenURL(arg1:string):Promise<void>;
 
 export function SaveConfig(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
+export function SyncNow():Promise<calendar.SyncConfig>;
+
 export function TestAndSync(arg1:string,arg2:string,arg3:string,arg4:string):Promise<calendar.SyncConfig>;

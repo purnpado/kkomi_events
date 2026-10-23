@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../core/api';
+import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
 import { formatMoney, formatNumber, numberToKorean } from '../../core/format';
-import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles, Globe } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles, Globe, RefreshCw, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -15,6 +17,27 @@ export default function DashboardPage() {
       console.error(err);
     }
   }, []);
+
+  const handleSyncCalendar = async () => {
+    setSyncing(true);
+    try {
+      const cfg = await api.calendar.syncNow();
+      emit('toast.show', {
+        title: '구글 캘린더 동기화 완료',
+        message: cfg?.lastSyncMsg || '구글 캘린더에서 최신 일정을 성공적으로 가져왔습니다.',
+        type: 'success',
+      });
+      loadSummary();
+    } catch (err) {
+      emit('toast.show', {
+        title: '캘린더 동기화 안내',
+        message: String(err).replace(/^Error:\s*/, ''),
+        type: 'error',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     loadSummary();
@@ -30,9 +53,23 @@ export default function DashboardPage() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <h1 className="page-title">대시보드</h1>
-        <p className="page-desc">받은 경조사비와 보낸 경조사비의 전반적인 입출 현황과 통계를 한눈에 확인합니다.</p>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 className="page-title">대시보드</h1>
+          <p className="page-desc">받은 경조사비와 보낸 경조사비의 전반적인 입출 현황과 통계를 한눈에 확인합니다.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={syncing}
+            onClick={handleSyncCalendar}
+            title="구글 캘린더에 적어둔 지인 경조사 일정을 지금 가져옵니다."
+          >
+            <RefreshCw size={15} className={syncing ? 'spin' : ''} />
+            {syncing ? '캘린더 가져오는 중...' : '구글 캘린더 일정 가져오기'}
+          </button>
+        </div>
       </header>
 
       {/* 핵심 4대 지표 카드 (토스 자산 카드 스타일) */}
@@ -222,9 +259,22 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {/* 다가오는 챙길 경조사 위젯 */}
           <div className="card">
-            <h2 style={{ marginTop: 0, marginBottom: 14, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Calendar size={20} style={{ color: '#ea580c' }} /> 다가오는 챙길 경조사
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h2 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Calendar size={20} style={{ color: '#ea580c' }} /> 다가오는 챙길 경조사
+              </h2>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                disabled={syncing}
+                onClick={handleSyncCalendar}
+                title="구글 캘린더에서 등록된 최신 경조사 일정 가져오기"
+              >
+                <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                {syncing ? '가져오는 중...' : '일정 가져오기'}
+              </button>
+            </div>
             {(!summary?.upcomingEvents || summary.upcomingEvents.length === 0) ? (
               <p style={{ margin: '14px 0', fontSize: '0.9rem', color: 'var(--fg-muted)' }}>
                 예정된 경조사가 없습니다. 편안한 나날 되세요!
@@ -240,9 +290,10 @@ export default function DashboardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      gap: 8,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                       <span
                         style={{
                           padding: '3px 8px',
@@ -251,15 +302,16 @@ export default function DashboardPage() {
                           fontWeight: 800,
                           background: up.daysLeft === 0 ? 'var(--expense)' : up.daysLeft <= 7 ? '#fff7ed' : 'var(--bg-sunken)',
                           color: up.daysLeft === 0 ? 'white' : up.daysLeft <= 7 ? '#ea580c' : 'var(--fg-muted)',
+                          flexShrink: 0,
                         }}
                       >
                         {up.daysLeft === 0 ? '오늘' : `D-${up.daysLeft}`}
                       </span>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <strong>{up.name}</strong>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <strong style={{ whiteSpace: 'nowrap' }}>{up.name}</strong>
                           {up.source === 'google' && (
-                            <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', padding: '2px 6px' }}>
+                            <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', padding: '2px 6px', whiteSpace: 'nowrap' }}>
                               구글 캘린더
                             </span>
                           )}
@@ -268,11 +320,31 @@ export default function DashboardPage() {
                         <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>{up.eventDate}</div>
                       </div>
                     </div>
-                    {up.amount > 0 ? (
-                      <strong style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatMoney(up.amount)}</strong>
-                    ) : (
-                      <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>예정</span>
-                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {up.source === 'google' ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ padding: '3px 8px', fontSize: '0.76rem', color: 'var(--primary)', borderColor: 'var(--border)' }}
+                          onClick={() => {
+                            localStorage.setItem('kkomi_prefill_sent', JSON.stringify({
+                              name: up.name,
+                              eventDate: up.eventDate,
+                              notes: `[구글 캘린더 연동 일정] ${up.eventTitle || up.name}`,
+                            }));
+                            emit('nav.goto', 'sent');
+                          }}
+                          title="이 일정을 타인 경조사비 장부(지출)로 등록합니다."
+                        >
+                          <Plus size={12} /> 장부 등록
+                        </button>
+                      ) : up.amount > 0 ? (
+                        <strong style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatMoney(up.amount)}</strong>
+                      ) : (
+                        <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>예정</span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

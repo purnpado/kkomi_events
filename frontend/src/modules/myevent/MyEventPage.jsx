@@ -9,6 +9,7 @@ import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import EventTypeModal from './EventTypeModal';
 import CustomFieldModal from '../../ui/CustomFieldModal';
+import TrashModal from '../../ui/TrashModal';
 import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
@@ -99,6 +100,7 @@ export default function MyEventPage() {
   const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [receivedModalOpen, setReceivedModalOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   // 행사 입력 폼
   const [eventForm, setEventForm] = useState({
@@ -490,7 +492,15 @@ export default function MyEventPage() {
           <h1 className="page-title">나의 경조사</h1>
           <p className="page-desc">결혼, 돌잔치, 장례식 등 내가 주최한 행사에 들어온 축의금·부의금을 정리합니다.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setTrashOpen(true)}
+            title="삭제한 축의금·부의금 또는 행사 목록 확인 및 복원"
+          >
+            <Trash2 size={16} /> 휴지통
+          </button>
           <button
             type="button"
             className="btn btn-ghost"
@@ -1141,6 +1151,16 @@ export default function MyEventPage() {
         onOpenChange={setCustomFieldModalOpen}
         targetMenu="myevent"
         targetTitle="나의 경조사"
+      />
+
+      {/* 휴지통 모달 */}
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => {
+          setTrashOpen(false);
+          loadEvents();
+          loadReceived();
+        }}
       />
     </div>
   );

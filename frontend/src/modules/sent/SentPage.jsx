@@ -7,6 +7,7 @@ import Modal from '../../ui/Modal';
 import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import CustomFieldModal from '../../ui/CustomFieldModal';
+import TrashModal from '../../ui/TrashModal';
 import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
@@ -84,6 +85,7 @@ export default function SentPage() {
 
   // 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [hintMessage, setHintMessage] = useState('');
 
   // 폼 상태
@@ -141,6 +143,24 @@ export default function SentPage() {
     loadTypes();
     loadCustomFields();
     api.settings.get('usage_mode').then((val) => setIsSharedMode(val === 'shared'));
+
+    // 대시보드 캘린더에서 [+ 장부 등록] 클릭 시 전달된 데이터가 있으면 자동 팝업 열기
+    try {
+      const prefillRaw = localStorage.getItem('kkomi_prefill_sent');
+      if (prefillRaw) {
+        localStorage.removeItem('kkomi_prefill_sent');
+        const prefill = JSON.parse(prefillRaw);
+        setForm((prev) => ({
+          ...prev,
+          name: prefill.name || '',
+          eventDate: prefill.eventDate || prev.eventDate,
+          notes: prefill.notes || '',
+        }));
+        setModalOpen(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }, [loadTypes, loadCustomFields]);
 
   useEffect(() => {
@@ -307,6 +327,14 @@ export default function SentPage() {
           <p className="page-desc">지인, 동료, 친척 등의 결혼식, 장례식 등에 보낸 경조사비 지출을 기록합니다.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setTrashOpen(true)}
+            title="삭제된 내역 목록 확인 및 복원"
+          >
+            <Trash2 size={16} /> 휴지통
+          </button>
           <button
             type="button"
             className="btn btn-ghost"
@@ -802,6 +830,15 @@ export default function SentPage() {
         onOpenChange={setCustomFieldModalOpen}
         targetMenu="sent"
         targetTitle="타인 경조사"
+      />
+
+      {/* 휴지통 모달 */}
+      <TrashModal
+        isOpen={trashOpen}
+        onClose={() => {
+          setTrashOpen(false);
+          loadSent();
+        }}
       />
     </div>
   );
