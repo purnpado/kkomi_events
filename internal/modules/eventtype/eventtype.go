@@ -65,11 +65,30 @@ func (m *Module) Migrations() []db.Migration {
 	}
 }
 
-// Init 은 초기 기본 탭(결혼, 돌잔치, 장례식 등)을 등록합니다.
+// Init 은 초기 기본 탭(결혼, 돌잔치, 장례식 등)을 최초 1회만 등록합니다.
+// 프로그램 재실행 시 사용자가 삭제하거나 수정한 탭이 다시 살아나지 않도록 방지합니다.
 func (m *Module) Init(c *module.Context) error {
 	m.svc.db = c.DB
 	m.svc.bus = c.Bus
 
+	// 1. 이미 최초 시딩을 마쳤는지 확인
+	var seeded string
+	_ = c.DB.QueryRow(`SELECT value FROM setting WHERE key = 'eventtype_defaults_seeded'`).Scan(&seeded)
+	if seeded == "true" {
+		return nil
+	}
+
+	// 2. 플래그가 없더라도 이미 event_type 테이블에 데이터가 있다면 기존 사용자이므로
+	// 삭제한 탭을 다시 복원하지 않고 시딩 완료 플래그만 기록합니다.
+	var count int
+	_ = c.DB.QueryRow(`SELECT COUNT(*) FROM event_type`).Scan(&count)
+	now := time.Now().Format(time.RFC3339)
+	if count > 0 {
+		_, _ = c.DB.Exec(`INSERT OR REPLACE INTO setting(key, value, updated_at) VALUES('eventtype_defaults_seeded', 'true', ?)`, now)
+		return nil
+	}
+
+	// 3. 완전히 새 DB(신규 설치)인 경우에만 기본 탭 7개 등록
 	defaultTypes := []struct {
 		name, icon, color string
 	}{
@@ -82,7 +101,6 @@ func (m *Module) Init(c *module.Context) error {
 		{"기타", "💌", "#6B7280"},
 	}
 
-	now := time.Now().Format(time.RFC3339)
 	for i, dt := range defaultTypes {
 		_, err := c.DB.Exec(`INSERT OR IGNORE INTO event_type(name, icon, color, sort_order, created_at, updated_at)
 			VALUES(?,?,?,?,?,?)`, dt.name, dt.icon, dt.color, i+1, now, now)
@@ -90,6 +108,8 @@ func (m *Module) Init(c *module.Context) error {
 			return fmt.Errorf("기본 경조사 탭 생성 실패(%s): %w", dt.name, err)
 		}
 	}
+
+	_, _ = c.DB.Exec(`INSERT OR REPLACE INTO setting(key, value, updated_at) VALUES('eventtype_defaults_seeded', 'true', ?)`, now)
 	return nil
 }
 
