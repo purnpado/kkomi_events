@@ -3,7 +3,6 @@ package dashboard
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"kkomi-events/internal/core/db"
@@ -11,6 +10,7 @@ import (
 	"kkomi-events/internal/core/module"
 )
 
+// SummaryData 는 대시보드 메인 요약 데이터입니다.
 // SummaryData 는 대시보드 메인 요약 데이터입니다.
 type SummaryData struct {
 	TotalReceivedAmount int64          `json:"totalReceivedAmount"`
@@ -23,6 +23,31 @@ type SummaryData struct {
 	UpcomingCount       int            `json:"upcomingCount"`
 	Monthly             []MonthlyStat  `json:"monthly"`
 	Categories          []CategoryStat `json:"categories"`
+	RecentEvents        []RecentItem   `json:"recentEvents"`
+	UpcomingEvents      []UpcomingItem `json:"upcomingEvents"`
+}
+
+// RecentItem 은 최근 발생한 입출 경조사 기록입니다.
+type RecentItem struct {
+	Type          string `json:"type"`          // "received" 또는 "sent"
+	Name          string `json:"name"`          // 지인 이름
+	EventTitle    string `json:"eventTitle"`    // 행사명 (예: 우리 결혼식, 친구 결혼식 등)
+	EventTypeIcon string `json:"eventTypeIcon"` // 이모지 아이콘
+	EventDate     string `json:"eventDate"`     // 행사 날짜
+	Amount        int64  `json:"amount"`        // 금액
+	Attendance    string `json:"attendance"`    // 참석 여부
+	CreatedAt     string `json:"createdAt"`     // 등록 일시
+}
+
+// UpcomingItem 은 다가오는 예정 경조사입니다.
+type UpcomingItem struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	EventTitle    string `json:"eventTitle"`
+	EventTypeIcon string `json:"eventTypeIcon"`
+	EventDate     string `json:"eventDate"`
+	DaysLeft      int    `json:"daysLeft"`
+	Amount        int64  `json:"amount"`
 }
 
 // MonthlyStat 은 특정 월의 수입(받음)과 지출(보냄) 금액입니다.
@@ -69,8 +94,10 @@ type Service struct {
 // GetSummary 는 대시보드 전체 통계와 차트 데이터를 계산하여 돌려줍니다.
 func (s *Service) GetSummary() (*SummaryData, error) {
 	data := &SummaryData{
-		Monthly:    []MonthlyStat{},
-		Categories: []CategoryStat{},
+		Monthly:        []MonthlyStat{},
+		Categories:     []CategoryStat{},
+		RecentEvents:   []RecentItem{},
+		UpcomingEvents: []UpcomingItem{},
 	}
 
 	// 1. 받은 총액 및 건수
@@ -83,32 +110,54 @@ func (s *Service) GetSummary() (*SummaryData, error) {
 
 	data.NetBalance = data.TotalReceivedAmount - data.TotalSentAmount
 
-	// 3. 다가오는 일정 건수 (오늘 이후)
+	// 3. 다가오는 일정 건수 및 목록 (오늘 이후)
 	today := time.Now().Format("2006-01-02")
 	_ = s.db.QueryRow(`SELECT COUNT(*) FROM sent WHERE event_date >= ? AND deleted_at IS NULL`, today).
 		Scan(&data.UpcomingCount)
 
-	// 4. 최근 6개월 월별 수입/지출 데이터 생성
-	now := time.Now()
-	for i := 5; i >= 0; i-- {
-		t := now.AddDate(0, -i, 0)
-		monthStr := t.Format("2006-01")
+	upRows, err := s.db.Query(`SELECT s.id, s.name, COALESCE(t.name, '기타'), COALESCE(t.icon, '💌'), s.event_date, s.amount
+		FROM sent s
+		LEFT JOIN event_type t ON s.event_type_id=t.id
+		WHERE s.event_date >= ? AND s.deleted_at IS NULL
+		ORDER BY s.event_date ASC
+		LIMIT 5`, today)
+	if err == nil {
+		defer upRows.Close()
+		todayTime, _ := time.Parse("2006-01-02", today)
+		for upRows.Next() {
+			var up UpcomingItem
+			if err := upRows.Scan(&up.ID, &up.Name, &up.EventTitle, &up.EventTypeIcon, &up.EventDate, &up.Amount); err == nil {
+				if dTime, err := time.Parse("2006-01-02", up.EventDate); err == nil {
+					up.DaysLeft = int(dTime.Sub(todayTime).Hours() / 24)
+				}
+				data.UpcomingEvents = append(data.UpcomingEvents, up)
+			}
+		}
+	}
 
-		var rAmt, sAmt int64
-		// 받은 돈: my_event.event_date 기준
-		_ = s.db.QueryRow(`SELECT COALESCE(SUM(r.amount), 0) FROM received r
-			JOIN my_event e ON r.my_event_id=e.id
-			WHERE e.event_date LIKE ? AND r.deleted_at IS NULL`, monthStr+"%").Scan(&rAmt)
-
-		// 보낸 돈: sent.event_date 기준
-		_ = s.db.QueryRow(`SELECT COALESCE(SUM(amount), 0) FROM sent
-			WHERE event_date LIKE ? AND deleted_at IS NULL`, monthStr+"%").Scan(&sAmt)
-
-		data.Monthly = append(data.Monthly, MonthlyStat{
-			Month:          fmt.Sprintf("%d월", t.Month()),
-			ReceivedAmount: rAmt,
-			SentAmount:     sAmt,
-		})
+	// 4. 최근 경조사 내역 (받은 내역 + 보낸 내역 통합 최신 8건)
+	recentRows, err := s.db.Query(`
+		SELECT 'received' as type, r.name, e.title as event_title, COALESCE(t.icon, '🎎') as icon, e.event_date, r.amount, r.attendance, r.created_at
+		FROM received r
+		JOIN my_event e ON r.my_event_id=e.id
+		LEFT JOIN event_type t ON e.event_type_id=t.id
+		WHERE r.deleted_at IS NULL AND e.deleted_at IS NULL
+		UNION ALL
+		SELECT 'sent' as type, s.name, COALESCE(t.name, '기타') as event_title, COALESCE(t.icon, '💌') as icon, s.event_date, s.amount, 
+			CASE WHEN s.attended=1 THEN '직접 참석' ELSE '불참 송금' END as attendance, s.created_at
+		FROM sent s
+		LEFT JOIN event_type t ON s.event_type_id=t.id
+		WHERE s.deleted_at IS NULL
+		ORDER BY event_date DESC, created_at DESC
+		LIMIT 8`)
+	if err == nil {
+		defer recentRows.Close()
+		for recentRows.Next() {
+			var item RecentItem
+			if err := recentRows.Scan(&item.Type, &item.Name, &item.EventTitle, &item.EventTypeIcon, &item.EventDate, &item.Amount, &item.Attendance, &item.CreatedAt); err == nil {
+				data.RecentEvents = append(data.RecentEvents, item)
+			}
+		}
 	}
 
 	// 5. 경조사 종류별 지출 분포

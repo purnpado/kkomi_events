@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../core/api';
 import { useBusEvent } from '../../core/hooks';
 import { formatMoney } from '../../core/format';
-import { MonthlyBarChart } from './CanvasChart';
 import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -112,62 +111,192 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-2">
-        {/* HTML5 Canvas 월별 수입/지출 비교 차트 */}
+        {/* 최근 경조사 활동 피드 (나의 경조사 받은 돈 + 타인 경조사 보낸 돈 통합) */}
         <div className="card">
-          <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={20} style={{ color: 'var(--primary)' }} /> 최근 6개월 월별 입출 추이
-          </h2>
-          <MonthlyBarChart data={summary?.monthly || []} height={250} />
-        </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp size={20} style={{ color: 'var(--primary)' }} /> 최근 경조사 내역
+            </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', fontWeight: 600 }}>
+              최근 {summary?.recentEvents?.length || 0}건
+            </span>
+          </div>
 
-        {/* 경조사 종류별 지출 분포 */}
-        <div className="card">
-          <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: '1.18rem', fontWeight: 800 }}>
-            종류별 보낸 경조사비 비중
-          </h2>
           <div>
-            {(!summary?.categories || summary.categories.every((c) => c.amount === 0)) ? (
-              <p className="table-empty">아직 지출 통계 데이터가 없습니다.</p>
+            {(!summary?.recentEvents || summary.recentEvents.length === 0) ? (
+              <p className="table-empty">아직 등록된 경조사 내역이 없습니다.</p>
             ) : (
               <ul className="list">
-                {summary.categories.map((cat, idx) => {
-                  const percent = summary.totalSentAmount > 0
-                    ? Math.round((cat.amount / summary.totalSentAmount) * 100)
-                    : 0;
+                {summary.recentEvents.map((item, idx) => {
+                  const isReceived = item.type === 'received';
                   return (
-                    <li key={cat.name} style={{ padding: '14px 0', borderBottom: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: '1.3rem', width: 36, height: 36, borderRadius: 10, background: 'var(--bg-sunken)', display: 'grid', placeItems: 'center' }}>
-                            {cat.icon}
-                          </span>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: '0.98rem' }}>{cat.name}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--fg-muted)' }}>{cat.count}건의 기록</div>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--expense)' }}>{formatMoney(cat.amount)}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', fontWeight: 600 }}>{percent}%</div>
-                        </div>
-                      </div>
-                      {/* 미니 프로그레스 바 */}
-                      <div style={{ height: 6, width: '100%', background: 'var(--bg-sunken)', borderRadius: 9999, overflow: 'hidden' }}>
+                    <li
+                      key={`${item.type}-${idx}-${item.name}-${item.eventDate}`}
+                      style={{
+                        padding: '12px 0',
+                        borderBottom: '1px solid var(--border-light)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div
                           style={{
-                            height: '100%',
-                            width: `${Math.min(100, Math.max(0, percent))}%`,
-                            background: 'var(--expense)',
-                            borderRadius: 9999,
-                            transition: 'width 0.4s var(--ease)',
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            background: isReceived ? 'var(--income-light)' : 'var(--expense-light)',
+                            color: isReceived ? 'var(--income)' : 'var(--expense)',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0,
                           }}
-                        />
+                        >
+                          {isReceived ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <strong style={{ fontSize: '0.98rem' }}>{item.name}</strong>
+                            <span
+                              className="badge"
+                              style={{
+                                background: isReceived ? 'var(--income-light)' : 'var(--expense-light)',
+                                color: isReceived ? 'var(--income)' : 'var(--expense)',
+                                fontSize: '0.74rem',
+                                padding: '1px 8px',
+                              }}
+                            >
+                              {isReceived ? '📥 받은 돈' : '📤 보낸 돈'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--fg-muted)', marginTop: 2 }}>
+                            <span>{item.eventTypeIcon} {item.eventTitle}</span>
+                            <span style={{ margin: '0 6px' }}>·</span>
+                            <span>{item.eventDate}</span>
+                            {item.attendance && (
+                              <>
+                                <span style={{ margin: '0 6px' }}>·</span>
+                                <span>{item.attendance}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div
+                          style={{
+                            fontWeight: 800,
+                            fontSize: '1.08rem',
+                            color: isReceived ? 'var(--income)' : 'var(--expense)',
+                            letterSpacing: '-0.02em',
+                          }}
+                        >
+                          {isReceived ? '+' : '-'}{formatMoney(item.amount)}
+                        </div>
                       </div>
                     </li>
                   );
                 })}
               </ul>
             )}
+          </div>
+        </div>
+
+        {/* 우측 열: 다가오는 일정 + 종류별 비중 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          {/* 다가오는 챙길 경조사 위젯 */}
+          <div className="card">
+            <h2 style={{ marginTop: 0, marginBottom: 14, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Calendar size={20} style={{ color: '#ea580c' }} /> 다가오는 챙길 경조사
+            </h2>
+            {(!summary?.upcomingEvents || summary.upcomingEvents.length === 0) ? (
+              <p style={{ margin: '14px 0', fontSize: '0.9rem', color: 'var(--fg-muted)' }}>
+                예정된 경조사가 없습니다. 편안한 나날 되세요!
+              </p>
+            ) : (
+              <ul className="list">
+                {summary.upcomingEvents.map((up) => (
+                  <li
+                    key={up.id}
+                    style={{
+                      padding: '10px 0',
+                      borderBottom: '1px solid var(--border-light)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 9999,
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          background: up.daysLeft === 0 ? 'var(--expense)' : up.daysLeft <= 7 ? '#fff7ed' : 'var(--bg-sunken)',
+                          color: up.daysLeft === 0 ? 'white' : up.daysLeft <= 7 ? '#ea580c' : 'var(--fg-muted)',
+                        }}
+                      >
+                        {up.daysLeft === 0 ? '오늘' : `D-${up.daysLeft}`}
+                      </span>
+                      <div>
+                        <strong>{up.name}</strong> 님 ({up.eventTypeIcon} {up.eventTitle})
+                        <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>{up.eventDate}</div>
+                      </div>
+                    </div>
+                    <strong style={{ color: 'var(--fg)' }}>{formatMoney(up.amount)}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* 경조사 종류별 지출 분포 */}
+          <div className="card">
+            <h2 style={{ marginTop: 0, marginBottom: 14, fontSize: '1.18rem', fontWeight: 800 }}>
+              종류별 보낸 경조사비 비중
+            </h2>
+            <div>
+              {(!summary?.categories || summary.categories.every((c) => c.amount === 0)) ? (
+                <p className="table-empty" style={{ padding: '30px 20px' }}>아직 지출 통계 데이터가 없습니다.</p>
+              ) : (
+                <ul className="list">
+                  {summary.categories.slice(0, 4).map((cat) => {
+                    const percent = summary.totalSentAmount > 0
+                      ? Math.round((cat.amount / summary.totalSentAmount) * 100)
+                      : 0;
+                    return (
+                      <li key={cat.name} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '1.2rem', width: 30, height: 30, borderRadius: 8, background: 'var(--bg-sunken)', display: 'grid', placeItems: 'center' }}>
+                              {cat.icon}
+                            </span>
+                            <span style={{ fontWeight: 700, fontSize: '0.94rem' }}>{cat.name}</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>{cat.count}건</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--expense)' }}>{formatMoney(cat.amount)}</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginLeft: 6, fontWeight: 600 }}>{percent}%</span>
+                          </div>
+                        </div>
+                        <div style={{ height: 5, width: '100%', background: 'var(--bg-sunken)', borderRadius: 9999, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${Math.min(100, Math.max(0, percent))}%`,
+                              background: 'var(--expense)',
+                              borderRadius: 9999,
+                            }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>

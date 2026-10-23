@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
@@ -9,7 +9,7 @@ import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import EventTypeModal from './EventTypeModal';
 import CustomFieldModal from '../../ui/CustomFieldModal';
-import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download } from 'lucide-react';
+import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
   { value: '친구', label: '친구' },
@@ -44,6 +44,48 @@ export default function MyEventPage() {
   const [activeEventId, setActiveEventId] = useState(null);
   const [receivedList, setReceivedList] = useState([]);
   const [search, setSearch] = useState('');
+
+  // 테이블 정렬 상태
+  const [sortConfig, setSortConfig] = useState({ key: 'id', order: 'asc' });
+
+  const requestSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, order: prev.order === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, order: key === 'amount' ? 'desc' : 'asc' };
+    });
+  };
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return <ArrowUpDown size={13} style={{ opacity: 0.35 }} />;
+    }
+    return sortConfig.order === 'asc' ? (
+      <ArrowUp size={13} style={{ color: 'var(--primary)', fontWeight: 800 }} />
+    ) : (
+      <ArrowDown size={13} style={{ color: 'var(--primary)', fontWeight: 800 }} />
+    );
+  };
+
+  const sortedReceivedList = useMemo(() => {
+    if (!receivedList || receivedList.length === 0) return [];
+    return [...receivedList].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+      if (aVal === undefined || aVal === null) aVal = '';
+      if (bVal === undefined || bVal === null) bVal = '';
+
+      if (typeof aVal === 'string') {
+        const cmp = aVal.localeCompare(bVal, 'ko');
+        return sortConfig.order === 'asc' ? cmp : -cmp;
+      }
+      if (typeof aVal === 'number' || typeof aVal === 'boolean') {
+        return sortConfig.order === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+      }
+      return 0;
+    });
+  }, [receivedList, sortConfig]);
 
   // 사용자 맞춤 항목 상태
   const [customFields, setCustomFields] = useState([]);
@@ -628,13 +670,33 @@ export default function MyEventPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 110 }}>이름</th>
+                  <th onClick={() => requestSort('name')} style={{ width: 110, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      이름 {renderSortIcon('name')}
+                    </div>
+                  </th>
                   <th style={{ width: 130 }}>전화번호</th>
-                  <th style={{ width: 100 }}>관계</th>
-                  <th style={{ width: 130, textAlign: 'right' }}>금액</th>
-                  <th style={{ width: 130, textAlign: 'center' }}>참석 여부</th>
+                  <th onClick={() => requestSort('relationship')} style={{ width: 100, cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      관계 {renderSortIcon('relationship')}
+                    </div>
+                  </th>
+                  <th onClick={() => requestSort('amount')} style={{ width: 130, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                      금액 {renderSortIcon('amount')}
+                    </div>
+                  </th>
+                  <th onClick={() => requestSort('attendance')} style={{ width: 130, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      참석 여부 {renderSortIcon('attendance')}
+                    </div>
+                  </th>
                   {isSharedMode && <th style={{ width: 100 }}>구분</th>}
-                  <th style={{ width: 90, textAlign: 'center' }}>답례 완료</th>
+                  <th onClick={() => requestSort('thanked')} style={{ width: 90, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      답례 완료 {renderSortIcon('thanked')}
+                    </div>
+                  </th>
                   {customFields.map((f) => (
                     <th key={f.id} style={{ minWidth: 90 }}>
                       {f.fieldName}
@@ -645,7 +707,7 @@ export default function MyEventPage() {
                 </tr>
               </thead>
               <tbody>
-                {receivedList.length === 0 ? (
+                {sortedReceivedList.length === 0 ? (
                   <tr>
                     <td colSpan={(isSharedMode ? 9 : 8) + customFields.length} className="table-empty">
                       <Sparkles size={32} style={{ color: 'var(--brand-400)', opacity: 0.8 }} />
@@ -658,7 +720,7 @@ export default function MyEventPage() {
                     </td>
                   </tr>
                 ) : (
-                  receivedList.map((item) => (
+                  sortedReceivedList.map((item) => (
                     <tr key={item.id}>
                       <td style={{ fontWeight: 700 }}>{item.name}</td>
                       <td className="mono">{formatPhone(item.phone)}</td>

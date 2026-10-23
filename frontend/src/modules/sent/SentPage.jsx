@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
@@ -7,7 +7,7 @@ import Modal from '../../ui/Modal';
 import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import CustomFieldModal from '../../ui/CustomFieldModal';
-import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer } from 'lucide-react';
+import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
   { value: '친구', label: '친구' },
@@ -34,6 +34,48 @@ export default function SentPage() {
   const [sentList, setSentList] = useState([]);
   const [search, setSearch] = useState('');
   const [isSharedMode, setIsSharedMode] = useState(false);
+
+  // 테이블 정렬 상태
+  const [sortConfig, setSortConfig] = useState({ key: 'eventDate', order: 'desc' });
+
+  const requestSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, order: prev.order === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, order: key === 'amount' ? 'desc' : 'asc' };
+    });
+  };
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) {
+      return <ArrowUpDown size={13} style={{ opacity: 0.35 }} />;
+    }
+    return sortConfig.order === 'asc' ? (
+      <ArrowUp size={13} style={{ color: 'var(--primary)', fontWeight: 800 }} />
+    ) : (
+      <ArrowDown size={13} style={{ color: 'var(--primary)', fontWeight: 800 }} />
+    );
+  };
+
+  const sortedSentList = useMemo(() => {
+    if (!sentList || sentList.length === 0) return [];
+    return [...sentList].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+      if (aVal === undefined || aVal === null) aVal = '';
+      if (bVal === undefined || bVal === null) bVal = '';
+
+      if (typeof aVal === 'string') {
+        const cmp = aVal.localeCompare(bVal, 'ko');
+        return sortConfig.order === 'asc' ? cmp : -cmp;
+      }
+      if (typeof aVal === 'number' || typeof aVal === 'boolean') {
+        return sortConfig.order === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+      }
+      return 0;
+    });
+  }, [sentList, sortConfig]);
 
   // 사용자 맞춤 항목 상태
   const [customFields, setCustomFields] = useState([]);
@@ -349,14 +391,42 @@ export default function SentPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: 110 }}>날짜</th>
-              <th style={{ width: 110 }}>이름</th>
+              <th onClick={() => requestSort('eventDate')} style={{ width: 120, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  날짜 {renderSortIcon('eventDate')}
+                </div>
+              </th>
+              <th onClick={() => requestSort('name')} style={{ width: 110, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  이름 {renderSortIcon('name')}
+                </div>
+              </th>
               <th style={{ width: 130 }}>전화번호</th>
-              <th style={{ width: 100 }}>관계</th>
-              <th style={{ width: 110 }}>경조사 종류</th>
-              <th style={{ width: 130, textAlign: 'right' }}>금액</th>
-              <th style={{ width: 110 }}>지출 수단</th>
-              <th style={{ width: 90, textAlign: 'center' }}>참석 여부</th>
+              <th onClick={() => requestSort('relationship')} style={{ width: 100, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  관계 {renderSortIcon('relationship')}
+                </div>
+              </th>
+              <th onClick={() => requestSort('eventTypeName')} style={{ width: 120, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  경조사 종류 {renderSortIcon('eventTypeName')}
+                </div>
+              </th>
+              <th onClick={() => requestSort('amount')} style={{ width: 130, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  금액 {renderSortIcon('amount')}
+                </div>
+              </th>
+              <th onClick={() => requestSort('paymentMethod')} style={{ width: 110, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  지출 수단 {renderSortIcon('paymentMethod')}
+                </div>
+              </th>
+              <th onClick={() => requestSort('attended')} style={{ width: 100, textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  참석 여부 {renderSortIcon('attended')}
+                </div>
+              </th>
               {isSharedMode && <th style={{ width: 100 }}>구분</th>}
               {customFields.map((f) => (
                 <th key={f.id} style={{ minWidth: 90 }}>
@@ -368,14 +438,14 @@ export default function SentPage() {
             </tr>
           </thead>
           <tbody>
-            {sentList.length === 0 ? (
+            {sortedSentList.length === 0 ? (
               <tr>
                 <td colSpan={(isSharedMode ? 11 : 10) + customFields.length} className="table-empty">
                   {search ? '검색된 내역이 없습니다.' : '등록된 보낸 내역이 없습니다. [보낸 내역 등록] 버튼을 눌러 추가해보세요.'}
                 </td>
               </tr>
             ) : (
-              sentList.map((item) => (
+              sortedSentList.map((item) => (
                 <tr key={item.id}>
                   <td style={{ color: 'var(--fg-muted)' }}>{formatDate(item.eventDate)}</td>
                   <td style={{ fontWeight: 700 }}>{item.name}</td>

@@ -84,6 +84,56 @@ export namespace dashboard {
 	        this.sentAmount = source["sentAmount"];
 	    }
 	}
+	export class RecentItem {
+	    type: string;
+	    name: string;
+	    eventTitle: string;
+	    eventTypeIcon: string;
+	    eventDate: string;
+	    amount: number;
+	    attendance: string;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecentItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.name = source["name"];
+	        this.eventTitle = source["eventTitle"];
+	        this.eventTypeIcon = source["eventTypeIcon"];
+	        this.eventDate = source["eventDate"];
+	        this.amount = source["amount"];
+	        this.attendance = source["attendance"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class UpcomingItem {
+	    id: number;
+	    name: string;
+	    eventTitle: string;
+	    eventTypeIcon: string;
+	    eventDate: string;
+	    daysLeft: number;
+	    amount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpcomingItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.eventTitle = source["eventTitle"];
+	        this.eventTypeIcon = source["eventTypeIcon"];
+	        this.eventDate = source["eventDate"];
+	        this.daysLeft = source["daysLeft"];
+	        this.amount = source["amount"];
+	    }
+	}
 	export class SummaryData {
 	    totalReceivedAmount: number;
 	    totalReceivedCount: number;
@@ -95,6 +145,8 @@ export namespace dashboard {
 	    upcomingCount: number;
 	    monthly: MonthlyStat[];
 	    categories: CategoryStat[];
+	    recentEvents: RecentItem[];
+	    upcomingEvents: UpcomingItem[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SummaryData(source);
@@ -112,6 +164,8 @@ export namespace dashboard {
 	        this.upcomingCount = source["upcomingCount"];
 	        this.monthly = this.convertValues(source["monthly"], MonthlyStat);
 	        this.categories = this.convertValues(source["categories"], CategoryStat);
+	        this.recentEvents = this.convertValues(source["recentEvents"], RecentItem);
+	        this.upcomingEvents = this.convertValues(source["upcomingEvents"], UpcomingItem);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

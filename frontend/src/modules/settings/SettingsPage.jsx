@@ -162,8 +162,8 @@ export default function SettingsPage() {
             꼬미경조사는 모든 데이터를 사용자 컴퓨터(실행 파일 폴더 내)에 암호화 보관하며, 외부 서버로 이름이나 금액을 절대 전송하지 않습니다.
           </p>
           <ul className="list">
-            <li>휴지통 자동 비우기: <strong>{settings.trash_days}일</strong> 후 영구 삭제</li>
-            <li>자동 백업 보관: 최근 <strong>{settings.backup_keep}개</strong> 보관 (종료 시 자동 백업)</li>
+            <li>삭제한 항목(휴지통): 직접 삭제한 쓰레기 데이터만 <strong>{settings.trash_days}일</strong> 보관 후 영구 정리 (정상 등록된 경조사는 영구 보관)</li>
+            <li>자동 백업 파일 보관: 전체 DB 백업 파일 최근 <strong>{settings.backup_keep}개</strong> 보관 (프로그램 종료 시 스냅샷 자동 생성)</li>
           </ul>
           <div style={{ marginTop: 16 }}>
             <button
