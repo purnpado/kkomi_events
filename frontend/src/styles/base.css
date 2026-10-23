@@ -1,0 +1,284 @@
+/* 기본 스타일 + 화면 틀(레이아웃) */
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: calc(15px * var(--font-scale));
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+button {
+  font: inherit;
+}
+
+/* ── 화면 틀 ── */
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: 100%;
+}
+
+.sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-3);
+  gap: var(--space-2);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2) var(--space-5);
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: linear-gradient(135deg, var(--brand-300), var(--brand-600));
+  box-shadow: 0 6px 18px hsl(12 80% 50% / 0.4);
+}
+
+.brand-name {
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.brand-ver {
+  font-size: 0.75rem;
+  color: var(--sidebar-muted);
+}
+
+.nav-section-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sidebar-muted);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  letter-spacing: 0.04em;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.nav-item:hover {
+  background: hsl(0 0% 100% / 0.08);
+  transform: translateX(2px);
+}
+
+.nav-item[aria-current='page'] {
+  background: hsl(0 0% 100% / 0.14);
+  box-shadow: inset 3px 0 0 var(--brand-300);
+  font-weight: 700;
+}
+
+.nav-icon {
+  width: 22px;
+  text-align: center;
+}
+
+.main {
+  overflow: auto;
+  padding: var(--space-6);
+}
+
+.page-header {
+  margin-bottom: var(--space-5);
+}
+
+.page-title {
+  margin: 0 0 var(--space-1);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.page-desc {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+/* ── 공통 카드/버튼 ── */
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  animation: rise 0.4s var(--ease) both;
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+}
+
+.stat-label {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-top: var(--space-1);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+  box-shadow: 0 4px 12px hsl(12 80% 50% / 0.3);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px hsl(12 80% 50% / 0.35);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.btn-ghost {
+  background: var(--bg-sunken);
+  color: var(--fg);
+  box-shadow: none;
+  border-color: var(--border);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.badge-ok {
+  background: hsl(158 52% 92%);
+  color: var(--income);
+}
+
+.badge-err {
+  background: hsl(352 66% 94%);
+  color: var(--expense);
+}
+
+.mono {
+  font-family: Consolas, 'D2Coding', monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.list li:last-child {
+  border-bottom: 0;
+}
+
+.alert-error {
+  background: hsl(352 66% 96%);
+  border: 1px solid hsl(352 66% 84%);
+  color: var(--expense);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes flash {
+  from {
+    background: var(--brand-100);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.flash {
+  animation: flash 1.2s var(--ease);
+}

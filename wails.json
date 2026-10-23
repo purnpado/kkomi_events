@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "kkomi-events",
+  "outputfilename": "꼬미경조사",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "purnpadosori",
+    "email": ""
+  },
+  "info": {
+    "companyName": "purnpadosori",
+    "productName": "꼬미경조사",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright © 2026 purnpadosori",
+    "comments": "경조사비 입출 내역 관리 프로그램"
+  }
+}

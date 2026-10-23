@@ -1,0 +1,67 @@
+/* ─────────────────────────────────────────────
+   꼬미경조사 디자인 토큰 (색, 글꼴, 간격, 그림자)
+   모든 화면은 이 변수만 사용합니다.
+   ───────────────────────────────────────────── */
+:root {
+  /* 글꼴 */
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif;
+  --font-scale: 1;
+
+  /* 브랜드 색: 따뜻한 살구 + 깊은 자두 */
+  --brand-50: hsl(18 100% 97%);
+  --brand-100: hsl(18 95% 92%);
+  --brand-300: hsl(16 88% 76%);
+  --brand-500: hsl(12 80% 62%);
+  --brand-600: hsl(10 70% 54%);
+  --brand-700: hsl(8 62% 44%);
+  --plum-500: hsl(320 32% 42%);
+  --plum-700: hsl(320 36% 28%);
+
+  /* 의미 색 */
+  --income: hsl(158 52% 38%);   /* 받은 돈 */
+  --expense: hsl(352 66% 52%);  /* 보낸 돈 */
+  --warn: hsl(40 92% 50%);
+  --info: hsl(212 70% 52%);
+
+  /* 라이트 테마 */
+  --bg: hsl(36 40% 97%);
+  --bg-elev: hsl(0 0% 100%);
+  --bg-sunken: hsl(34 30% 93%);
+  --sidebar-bg: linear-gradient(180deg, hsl(320 30% 24%) 0%, hsl(330 34% 17%) 100%);
+  --sidebar-fg: hsl(30 40% 92%);
+  --sidebar-muted: hsl(320 14% 70%);
+  --fg: hsl(320 18% 16%);
+  --fg-muted: hsl(320 8% 44%);
+  --border: hsl(30 20% 87%);
+  --ring: hsl(12 80% 62% / 0.45);
+
+  /* 모양 */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px hsl(320 30% 20% / 0.06);
+  --shadow: 0 4px 16px hsl(320 30% 20% / 0.08), 0 1px 3px hsl(320 30% 20% / 0.06);
+  --shadow-lg: 0 18px 48px hsl(320 30% 20% / 0.16);
+
+  /* 간격 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme='dark'] {
+  --bg: hsl(320 14% 9%);
+  --bg-elev: hsl(320 12% 13%);
+  --bg-sunken: hsl(320 12% 7%);
+  --sidebar-bg: linear-gradient(180deg, hsl(320 18% 12%) 0%, hsl(330 20% 8%) 100%);
+  --fg: hsl(30 30% 93%);
+  --fg-muted: hsl(320 8% 66%);
+  --border: hsl(320 10% 22%);
+  --shadow: 0 4px 16px hsl(0 0% 0% / 0.35);
+  --shadow-lg: 0 18px 48px hsl(0 0% 0% / 0.5);
+}

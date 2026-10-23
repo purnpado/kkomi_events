@@ -1,0 +1,27 @@
+# ── 빌드 결과물 ──
+build/bin/
+frontend/dist/
+node_modules/
+frontend/node_modules/
+
+# ── 개인정보 보호: 데이터베이스/백업/로그는 절대 커밋하지 않음 ──
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+data/
+backup/
+logs/
+*.log
+
+# ── 비밀 정보 ──
+.env
+*.token
+credentials*
+
+# ── 편집기/OS ──
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
