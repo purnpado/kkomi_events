@@ -55,3 +55,69 @@ export function openGoogleCalendarAdd({ title, startDate, location = '', details
   // Wails 브라우저 오픈 API 호출
   api.calendar.openUrl(fullUrl);
 }
+
+/**
+ * 경조사 일정 목록을 표준 iCalendar(.ics) 파일로 일괄 다운로드합니다.
+ * 구글 캘린더, 네이버 캘린더, 아웃룩, 갤럭시/아이폰 캘린더에 한 번에 등록할 수 있습니다.
+ * @param {string} filename 저장할 파일명
+ * @param {Array} events 일정 객체 배열
+ */
+export function downloadEventsAsIcs(filename, events) {
+  if (!events || events.length === 0) return;
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//꼬미경조사//KKOMI EVENTS//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:꼬미경조사 타인 경조사 일정',
+  ];
+
+  events.forEach((ev, idx) => {
+    if (!ev.eventDate) return;
+    const cleanDate = ev.eventDate.replace(/[^0-9]/g, '').slice(0, 8);
+    if (cleanDate.length < 8) return;
+
+    let cleanEnd = cleanDate;
+    try {
+      const d = new Date(Number(cleanDate.slice(0, 4)), Number(cleanDate.slice(4, 6)) - 1, Number(cleanDate.slice(6, 8)));
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      cleanEnd = `${y}${m}${day}`;
+    } catch {
+      cleanEnd = cleanDate;
+    }
+
+    const title = ev.title || `[${ev.eventTypeName || ev.eventTypeIcon || '경조사'}] ${ev.name}`;
+    const desc = [
+      ev.relationship ? `관계: ${ev.relationship}` : '',
+      ev.amount ? `금액: ${Number(ev.amount).toLocaleString()}원` : '',
+      ev.notes ? `비고: ${ev.notes}` : '',
+      '꼬미경조사에서 내보낸 일정',
+    ].filter(Boolean).join('\\n');
+
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:kkomi-sent-${Date.now()}-${idx}@kkomi.local`);
+    lines.push(`DTSTAMP:${cleanDate}T000000Z`);
+    lines.push(`DTSTART;VALUE=DATE:${cleanDate}`);
+    lines.push(`DTEND;VALUE=DATE:${cleanEnd}`);
+    lines.push(`SUMMARY:${title}`);
+    lines.push(`DESCRIPTION:${desc}`);
+    lines.push('END:VEVENT');
+  });
+
+  lines.push('END:VCALENDAR');
+
+  const icsContent = lines.join('\r\n');
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', filename || '꼬미경조사_타인경조사_일정.ics');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+

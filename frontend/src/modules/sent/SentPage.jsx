@@ -8,7 +8,7 @@ import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import CustomFieldModal from '../../ui/CustomFieldModal';
 import TrashModal from '../../ui/TrashModal';
-import { openGoogleCalendarAdd } from '../../core/calendarUtils';
+import { openGoogleCalendarAdd, downloadEventsAsIcs } from '../../core/calendarUtils';
 import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
@@ -236,7 +236,7 @@ export default function SentPage() {
   const handleSave = async () => {
     if (!form.name.trim()) {
       emit('toast.show', { title: '입력 필요', message: '상대방 이름을 입력해주세요.', type: 'error' });
-      return;
+      return false;
     }
     try {
       let savedId = form.id;
@@ -283,8 +283,42 @@ export default function SentPage() {
 
       setModalOpen(false);
       loadSent();
+      return true;
     } catch (err) {
       emit('toast.show', { title: '저장 실패', message: String(err), type: 'error' });
+      return false;
+    }
+  };
+
+  // 장부 저장과 동시에 구글 캘린더 웹 일정 등록 페이지 자동 오픈
+  const handleSaveAndOpenGoogle = async () => {
+    const success = await handleSave();
+    if (success) {
+      const selectedType = types.find((t) => t.id === Number(form.eventTypeId));
+      openGoogleCalendarAdd({
+        title: `[${selectedType?.icon || '경조사'}] ${form.name} (${selectedType?.name || form.relationship || '경조사'})`,
+        startDate: form.eventDate,
+        location: form.notes || '',
+        details: `경조사 종류: ${selectedType?.name || ''}\n금액: ${Number(form.amount).toLocaleString()}원\n지출 수단: ${form.paymentMethod}\n참석 여부: ${form.attended ? '참석' : '불참(송금)'}\n비고: ${form.notes || '-'}`,
+      });
+    }
+  };
+
+  // 전체 또는 필터링된 타인 경조사 일정을 구글/표준 캘린더(.ics) 파일로 일괄 내보내기
+  const handleExportCalendar = () => {
+    if (!sentList || sentList.length === 0) {
+      emit('toast.show', { title: '내보내기 불가', message: '내보낼 경조사 일정이 없습니다.', type: 'info' });
+      return;
+    }
+    try {
+      downloadEventsAsIcs('꼬미경조사_타인경조사_일정.ics', sentList);
+      emit('toast.show', {
+        title: '캘린더 파일(.ics) 저장 완료',
+        message: '구글 캘린더 [설정 > 가져오기]에서 등록하시면 모든 타인 경조사 일정이 구글 캘린더에 일괄 반영됩니다.',
+        type: 'success',
+      });
+    } catch (err) {
+      emit('toast.show', { title: '캘린더 내보내기 실패', message: String(err), type: 'error' });
     }
   };
 
@@ -335,6 +369,14 @@ export default function SentPage() {
             title="삭제된 내역 목록 확인 및 복원"
           >
             <Trash2 size={16} /> 휴지통
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={handleExportCalendar}
+            title="모든 타인 경조사 일정을 구글/애플/네이버 캘린더 표준 파일(.ics)로 일괄 내보냅니다."
+          >
+            <Calendar size={16} /> 캘린더(.ics) 내보내기
           </button>
           <button
             type="button"
@@ -830,13 +872,24 @@ export default function SentPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
-            취소
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ color: '#0284c7', borderColor: '#bae6fd', background: '#f0f9ff' }}
+            onClick={handleSaveAndOpenGoogle}
+            title="장부에 저장함과 동시에 구글 캘린더 새 일정 웹페이지를 즉시 엽니다."
+          >
+            <Calendar size={15} /> 저장하고 구글 캘린더에 등록
           </button>
-          <button type="button" className="btn" onClick={handleSave}>
-            저장
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
+              취소
+            </button>
+            <button type="button" className="btn" onClick={handleSave}>
+              저장
+            </button>
+          </div>
         </div>
       </Modal>
 
