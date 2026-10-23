@@ -10,6 +10,7 @@ import Select from '../../ui/Select';
 import EventTypeModal from './EventTypeModal';
 import CustomFieldModal from '../../ui/CustomFieldModal';
 import TrashModal from '../../ui/TrashModal';
+import { openGoogleCalendarAdd } from '../../core/calendarUtils';
 import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
@@ -591,7 +592,23 @@ export default function MyEventPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-chip"
+                  style={{ color: '#0369a1', background: '#f0f9ff', borderColor: '#bae6fd' }}
+                  onClick={() => {
+                    openGoogleCalendarAdd({
+                      title: `[${activeType?.name || '경조사'}] ${activeEvent.title}`,
+                      startDate: activeEvent.eventDate,
+                      location: activeEvent.location,
+                      details: `주인공: ${activeEvent.targetName || '-'}\n비고: ${activeEvent.notes || '-'}`,
+                    });
+                  }}
+                  title="이 행사를 구글 캘린더 웹에 바로 일정으로 등록합니다."
+                >
+                  <Calendar size={13} /> 구글 캘린더 추가
+                </button>
                 <button type="button" className="btn-chip" onClick={() => openEditEvent(activeEvent)}>
                   <Edit2 size={13} /> 행사 정보 수정
                 </button>

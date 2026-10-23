@@ -3,6 +3,7 @@ import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
 import { formatMoney, formatNumber, numberToKorean } from '../../core/format';
+import { openGoogleCalendarAdd } from '../../core/calendarUtils';
 import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles, Globe, RefreshCw, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -339,10 +340,29 @@ export default function DashboardPage() {
                         >
                           <Plus size={12} /> 장부 등록
                         </button>
-                      ) : up.amount > 0 ? (
-                        <strong style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatMoney(up.amount)}</strong>
                       ) : (
-                        <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>예정</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {up.amount > 0 ? (
+                            <strong style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatMoney(up.amount)}</strong>
+                          ) : (
+                            <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>예정</span>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            style={{ padding: '3px 8px', fontSize: '0.74rem', color: '#0369a1', background: '#f0f9ff', borderColor: '#bae6fd' }}
+                            onClick={() => {
+                              openGoogleCalendarAdd({
+                                title: `[${up.eventTypeIcon || '경조사'}] ${up.name} ${up.eventTitle || ''}`.trim(),
+                                startDate: up.eventDate,
+                                details: `꼬미경조사 예정 일정\n금액: ${up.amount > 0 ? formatMoney(up.amount) : '미정'}`,
+                              });
+                            }}
+                            title="이 일정을 구글 캘린더 웹에 바로 추가합니다."
+                          >
+                            <Calendar size={12} /> 구글 캘린더 추가
+                          </button>
+                        </div>
                       )}
                     </div>
                   </li>

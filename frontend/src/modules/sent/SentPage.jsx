@@ -8,6 +8,7 @@ import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
 import CustomFieldModal from '../../ui/CustomFieldModal';
 import TrashModal from '../../ui/TrashModal';
+import { openGoogleCalendarAdd } from '../../core/calendarUtils';
 import { Plus, Search, Calendar, Trash2, Edit2, Send, Lightbulb, CheckCircle2, SlidersHorizontal, FileSpreadsheet, Printer, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const RELATION_OPTIONS = [
@@ -544,6 +545,21 @@ export default function SentPage() {
                   <td className="cell-wrap" style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                      <button
+                        type="button"
+                        className="btn-chip"
+                        style={{ color: '#0369a1', background: '#f0f9ff', borderColor: '#bae6fd' }}
+                        onClick={() => {
+                          openGoogleCalendarAdd({
+                            title: `[${item.eventTypeIcon || '경조사'}] ${item.name} (${item.relationship || ''})`.trim(),
+                            startDate: item.eventDate,
+                            details: `경조사 종류: ${item.eventTypeName}\n금액: ${formatMoney(item.amount)}\n비고: ${item.notes || '-'}`,
+                          });
+                        }}
+                        title="이 일정을 구글 캘린더 웹에 등록합니다."
+                      >
+                        <Calendar size={13} />
+                      </button>
                       <button
                         type="button"
                         className="btn-chip"
