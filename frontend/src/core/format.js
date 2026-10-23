@@ -38,7 +38,7 @@ export function normalizePhone(phone) {
   return String(phone).replace(/[^0-9]/g, '');
 }
 
-// 금액을 알기 쉬운 한글 단위("5만원", "150만원")로 표기
+// 금액을 알기 쉬운 한글 단위("5만원", "1,000만원")로 표기
 export function numberToKorean(val) {
   const num = Number(val);
   if (!num || isNaN(num)) return '';
@@ -59,6 +59,18 @@ export function numberToKorean(val) {
   }
 
   return (num < 0 ? '-' : '') + result.trim() + '원';
+}
+
+// 10만원 이상 큰 금액일 때 한글 단위를 함께 병행 표기 ("10,000,000원 (1,000만원)")
+export function formatMoneyWithKorean(val) {
+  const num = Number(val);
+  if (!num || isNaN(num) || num === 0) return '0원';
+  const moneyStr = formatMoney(num);
+  if (Math.abs(num) >= 100000) {
+    const krStr = numberToKorean(num);
+    return `${moneyStr} (${krStr})`;
+  }
+  return moneyStr;
 }
 
 // 날짜를 YYYY-MM-DD 형태로 포맷

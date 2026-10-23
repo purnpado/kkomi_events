@@ -94,6 +94,44 @@ export async function call(path, ...args) {
           { name: '장례식', amount: 50000, percentage: 33 },
         ],
       };
+    case 'calendar.Service.GetConfig':
+      return {
+        mode: mockData.settings.calendar_mode || 'none',
+        icalUrl: mockData.settings.calendar_ical_url || '',
+        apiKey: mockData.settings.calendar_api_key || '',
+        calendarId: mockData.settings.calendar_id || 'primary',
+        lastSyncAt: mockData.settings.calendar_last_sync_at || '',
+        lastSyncMsg: mockData.settings.calendar_last_sync_msg || '',
+        syncCount: 2,
+      };
+    case 'calendar.Service.SaveConfig':
+      mockData.settings.calendar_mode = args[0];
+      mockData.settings.calendar_ical_url = args[1];
+      mockData.settings.calendar_api_key = args[2];
+      mockData.settings.calendar_id = args[3];
+      return true;
+    case 'calendar.Service.TestAndSync': {
+      const mode = args[0];
+      mockData.settings.calendar_mode = mode;
+      mockData.settings.calendar_ical_url = args[1];
+      mockData.settings.calendar_api_key = args[2];
+      mockData.settings.calendar_id = args[3];
+      const nowStr = new Date().toLocaleString('ko-KR');
+      mockData.settings.calendar_last_sync_at = nowStr;
+      mockData.settings.calendar_last_sync_msg = '성공: 구글 캘린더에서 경조사 관련 일정 2건을 가져왔습니다.';
+      return {
+        mode,
+        icalUrl: args[1],
+        apiKey: args[2],
+        calendarId: args[3],
+        lastSyncAt: nowStr,
+        lastSyncMsg: mockData.settings.calendar_last_sync_msg,
+        syncCount: 2,
+      };
+    }
+    case 'calendar.Service.OpenURL':
+      window.open(args[0], '_blank');
+      return true;
     case 'system.Service.GetInfo':
       return {
         appName: '꼬미경조사 (미리보기)',
@@ -175,5 +213,11 @@ export const api = {
     exportSent: (eventTypeId = 0) => call('excelio.Service.ExportSent', eventTypeId),
     downloadTemplate: () => call('excelio.Service.DownloadTemplate'),
     importReceived: (myEventId) => call('excelio.Service.ImportReceived', myEventId),
+  },
+  calendar: {
+    getConfig: () => call('calendar.Service.GetConfig'),
+    saveConfig: (mode, icalUrl, apiKey, calendarId) => call('calendar.Service.SaveConfig', mode, icalUrl, apiKey, calendarId),
+    testAndSync: (mode, icalUrl, apiKey, calendarId) => call('calendar.Service.TestAndSync', mode, icalUrl, apiKey, calendarId),
+    openUrl: (url) => call('calendar.Service.OpenURL', url),
   },
 };

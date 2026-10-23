@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { Sun, Moon, Users, User, Type, Database, Check } from 'lucide-react';
+import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -14,11 +14,75 @@ export default function SettingsPage() {
   });
   const [savedKey, setSavedKey] = useState('');
 
+  // 구글 캘린더 연동 상태
+  const [calConfig, setCalConfig] = useState({
+    mode: 'none',
+    icalUrl: '',
+    apiKey: '',
+    calendarId: 'primary',
+    lastSyncAt: '',
+    lastSyncMsg: '',
+    syncCount: 0,
+  });
+  const [testing, setTesting] = useState(false);
+
+  const loadCalendarConfig = async () => {
+    try {
+      const cfg = await api.calendar.getConfig();
+      if (cfg) setCalConfig((prev) => ({ ...prev, ...cfg }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     api.settings.getAll().then((data) => {
       if (data) setSettings((prev) => ({ ...prev, ...data }));
     }).catch(console.error);
+    loadCalendarConfig();
   }, []);
+
+  const handleModeChange = async (newMode) => {
+    setCalConfig((prev) => ({ ...prev, mode: newMode }));
+    try {
+      await api.calendar.saveConfig(newMode, calConfig.icalUrl, calConfig.apiKey, calConfig.calendarId);
+      emit('toast.show', {
+        title: '연동 방식 변경',
+        message: newMode === 'none' ? '캘린더 연동이 해제되었습니다.' : '연동 방식이 변경되었습니다.',
+        type: 'success',
+      });
+    } catch (err) {
+      emit('toast.show', { title: '저장 실패', message: String(err), type: 'error' });
+    }
+  };
+
+  const handleTestAndSync = async () => {
+    setTesting(true);
+    try {
+      const res = await api.calendar.testAndSync(
+        calConfig.mode,
+        calConfig.icalUrl,
+        calConfig.apiKey,
+        calConfig.calendarId
+      );
+      if (res) {
+        setCalConfig((prev) => ({ ...prev, ...res }));
+        emit('toast.show', {
+          title: '동기화 완료',
+          message: res.lastSyncMsg || `경조사 일정 ${res.syncCount}건을 가져왔습니다.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', {
+        title: '동기화 실패',
+        message: String(err),
+        type: 'error',
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   useBusEvent('settings.changed', (e) => {
     const { key, value } = e.payload || {};
@@ -186,6 +250,219 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ── 구글 캘린더 연동 설정 섹션 (방안 1 & 방안 2 선택 지원) ── */}
+      <div className="card" style={{ marginTop: 24, border: '1.5px solid var(--border-light)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e0f2fe', color: '#0284c7', display: 'grid', placeItems: 'center' }}>
+              <Calendar size={20} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>구글 캘린더 연동 설정</h2>
+              <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--fg-muted)' }}>
+                구글 캘린더에 적어둔 지인 결혼식, 돌잔치, 장례식 일정을 읽어와 대시보드 [다가오는 챙길 경조사]에 띄워줍니다.
+              </p>
+            </div>
+          </div>
+          {calConfig.lastSyncAt && (
+            <span style={{ fontSize: '0.8rem', color: 'var(--fg-muted)' }}>
+              최근 동기화: {calConfig.lastSyncAt}
+            </span>
+          )}
+        </div>
+
+        {/* 연동 모드 선택 3종 */}
+        <div style={{ marginBottom: 18 }}>
+          <label className="form-label" style={{ marginBottom: 8 }}>연동 방식 선택</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            <button
+              type="button"
+              className={`btn ${calConfig.mode === 'none' ? '' : 'btn-ghost'}`}
+              style={{ justifyContent: 'flex-start', padding: '12px 16px', height: 'auto' }}
+              onClick={() => handleModeChange('none')}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>⚪ 미사용</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 2 }}>로컬 장부 일정만 사용</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={`btn ${calConfig.mode === 'ical' ? '' : 'btn-ghost'}`}
+              style={{ justifyContent: 'flex-start', padding: '12px 16px', height: 'auto', borderColor: calConfig.mode === 'ical' ? 'var(--primary)' : undefined }}
+              onClick={() => handleModeChange('ical')}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.94rem', color: 'var(--primary)' }}>🟢 [간편] iCal 비공개 URL (추천)</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 2 }}>복잡한 가입 없이 주소 복사로 1초 완성</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={`btn ${calConfig.mode === 'api' ? '' : 'btn-ghost'}`}
+              style={{ justifyContent: 'flex-start', padding: '12px 16px', height: 'auto' }}
+              onClick={() => handleModeChange('api')}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>🔵 [고급] Google Calendar API Key</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 2 }}>구글 공식 개발자 API 연동</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* 모드 1: iCal 비공개 URL 연동 폼 */}
+        {calConfig.mode === 'ical' && (
+          <div style={{ background: 'var(--bg-sunken)', padding: 18, borderRadius: 'var(--radius)', animation: 'rise 0.2s var(--ease)' }}>
+            <div className="form-group" style={{ marginBottom: 14 }}>
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>구글 캘린더 iCal 비공개 주소 (.ics) *</span>
+                <button
+                  type="button"
+                  onClick={() => api.calendar.openUrl('https://calendar.google.com/calendar/r/settings')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                  title="새 창에서 구글 캘린더 설정 페이지 열기"
+                >
+                  <ExternalLink size={13} /> Google 캘린더 설정 바로가기
+                </button>
+              </label>
+              <input
+                type="text"
+                className="input-text"
+                placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
+                value={calConfig.icalUrl}
+                onChange={(e) => setCalConfig({ ...calConfig, icalUrl: e.target.value })}
+                style={{ fontSize: '0.9rem' }}
+              />
+            </div>
+
+            <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', lineHeight: 1.6, marginBottom: 16 }}>
+              💡 <strong>1분 안내:</strong>{' '}
+              <a
+                href="#open-google-settings"
+                onClick={(e) => {
+                  e.preventDefault();
+                  api.calendar.openUrl('https://calendar.google.com/calendar/r/settings');
+                }}
+                style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                Google 캘린더 설정 웹페이지 <ExternalLink size={12} />
+              </a>
+              에 접속 후 → 좌측의 내 캘린더 클릭 → 아래로 스크롤하여 <strong>[iCal 형식의 비공개 주소]</strong>를 복사하여 위 칸에 붙여넣으세요.
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={testing}
+                onClick={handleTestAndSync}
+              >
+                {testing ? <RefreshCw size={15} className="spin" /> : <RefreshCw size={15} />} 지금 연결 테스트 및 동기화
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 모드 2: Google Calendar API Key 연동 폼 */}
+        {calConfig.mode === 'api' && (
+          <div style={{ background: 'var(--bg-sunken)', padding: 18, borderRadius: 'var(--radius)', animation: 'rise 0.2s var(--ease)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Google Cloud API Key *</span>
+                  <button
+                    type="button"
+                    onClick={() => api.calendar.openUrl('https://console.cloud.google.com/apis/credentials')}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                    title="새 창에서 구글 클라우드 콘솔 열기"
+                  >
+                    <ExternalLink size={13} /> Google Cloud 콘솔 바로가기
+                  </button>
+                </label>
+                <input
+                  type="password"
+                  className="input-text"
+                  placeholder="AIzaSy..."
+                  value={calConfig.apiKey}
+                  onChange={(e) => setCalConfig({ ...calConfig, apiKey: e.target.value })}
+                  style={{ fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">캘린더 ID</label>
+                <input
+                  type="text"
+                  className="input-text"
+                  placeholder="primary"
+                  value={calConfig.calendarId}
+                  onChange={(e) => setCalConfig({ ...calConfig, calendarId: e.target.value })}
+                  style={{ fontSize: '0.9rem' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', lineHeight: 1.6, marginBottom: 16 }}>
+              💡 <strong>안내:</strong>{' '}
+              <a
+                href="#open-gcp-console"
+                onClick={(e) => {
+                  e.preventDefault();
+                  api.calendar.openUrl('https://console.cloud.google.com/apis/credentials');
+                }}
+                style={{ color: 'var(--primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                Google Cloud Console <ExternalLink size={12} />
+              </a>
+              에서 Google Calendar API를 사용 설정한 후 생성한 API 키를 입력하세요. (기본 캘린더 ID는 <code>primary</code>)
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={testing}
+                onClick={handleTestAndSync}
+              >
+                {testing ? <RefreshCw size={15} className="spin" /> : <RefreshCw size={15} />} API 연결 테스트 및 일정 가져오기
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 동기화 상태 메시지 알림 */}
+        {calConfig.lastSyncMsg && (
+          <div style={{ marginTop: 14, fontSize: '0.86rem', color: calConfig.lastSyncMsg.includes('실패') || calConfig.lastSyncMsg.includes('오류') ? 'var(--expense)' : 'var(--income)', fontWeight: 600 }}>
+            {calConfig.lastSyncMsg}
+          </div>
+        )}
       </div>
     </>
   );

@@ -12,6 +12,7 @@ import (
 	"kkomi-events/internal/core/paths"
 	"kkomi-events/internal/core/version"
 	"kkomi-events/internal/modules/backup"
+	"kkomi-events/internal/modules/calendar"
 	"kkomi-events/internal/modules/customfield"
 	"kkomi-events/internal/modules/dashboard"
 	"kkomi-events/internal/modules/eventtype"
@@ -44,6 +45,7 @@ func main() {
 		dashboard.New(),
 		backup.New(),
 		excelio.New(),
+		calendar.New(),
 	)
 	// ────────────────────────────────────────────────────
 

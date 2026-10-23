@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../core/api';
 import { useBusEvent } from '../../core/hooks';
-import { formatMoney } from '../../core/format';
-import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles } from 'lucide-react';
+import { formatMoney, formatNumber, numberToKorean } from '../../core/format';
+import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles, Globe } from 'lucide-react';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
@@ -20,9 +20,13 @@ export default function DashboardPage() {
     loadSummary();
   }, [loadSummary]);
 
-  useBusEvent(['myevent.*', 'received.*', 'sent.*', 'eventtype.*'], () => {
+  useBusEvent(['myevent.*', 'received.*', 'sent.*', 'eventtype.*', 'calendar.*'], () => {
     loadSummary();
   });
+
+  const totalReceived = summary?.totalReceivedAmount || 0;
+  const totalSent = summary?.totalSentAmount || 0;
+  const netBalance = summary?.netBalance || 0;
 
   return (
     <div className="page-container">
@@ -43,8 +47,12 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="stat-value" style={{ color: 'var(--income)' }}>
-              {formatMoney(summary?.totalReceivedAmount || 0)}
+              <span>{formatNumber(totalReceived)}</span>
+              <span className="stat-unit">원</span>
             </div>
+            {Math.abs(totalReceived) >= 100000 && (
+              <div className="stat-korean">({numberToKorean(totalReceived)})</div>
+            )}
           </div>
           <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', marginTop: 8, fontWeight: 500 }}>
             총 <strong style={{ color: 'var(--fg)' }}>{summary?.totalReceivedCount || 0}건</strong> 입금
@@ -61,8 +69,12 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="stat-value" style={{ color: 'var(--expense)' }}>
-              {formatMoney(summary?.totalSentAmount || 0)}
+              <span>{formatNumber(totalSent)}</span>
+              <span className="stat-unit">원</span>
             </div>
+            {Math.abs(totalSent) >= 100000 && (
+              <div className="stat-korean">({numberToKorean(totalSent)})</div>
+            )}
           </div>
           <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', marginTop: 8, fontWeight: 500 }}>
             총 <strong style={{ color: 'var(--fg)' }}>{summary?.totalSentCount || 0}건</strong> 지출
@@ -79,15 +91,17 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="stat-value">
-              {(summary?.netBalance || 0) >= 0 ? (
-                <span style={{ color: 'var(--income)' }}>+{formatMoney(summary?.netBalance || 0)}</span>
-              ) : (
-                <span style={{ color: 'var(--expense)' }}>-{formatMoney(Math.abs(summary?.netBalance || 0))}</span>
-              )}
+              <span style={{ color: netBalance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
+                {netBalance >= 0 ? '+' : '-'}{formatNumber(Math.abs(netBalance))}
+              </span>
+              <span className="stat-unit" style={{ color: netBalance >= 0 ? 'var(--income)' : 'var(--expense)' }}>원</span>
             </div>
+            {Math.abs(netBalance) >= 100000 && (
+              <div className="stat-korean">({numberToKorean(Math.abs(netBalance))})</div>
+            )}
           </div>
           <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', marginTop: 8, fontWeight: 500 }}>
-            {(summary?.netBalance || 0) >= 0 ? '👍 받은 금액이 더 많아요' : '💸 보낸 금액이 더 많아요'}
+            {netBalance >= 0 ? '👍 받은 금액이 더 많아요' : '💸 보낸 금액이 더 많아요'}
           </div>
         </div>
 
@@ -101,7 +115,8 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="stat-value" style={{ color: 'var(--fg)' }}>
-              {summary?.upcomingCount || 0}<span style={{ fontSize: '1.2rem', fontWeight: 600, marginLeft: 2 }}>건</span>
+              <span>{summary?.upcomingCount || 0}</span>
+              <span className="stat-unit">건</span>
             </div>
           </div>
           <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)', marginTop: 8, fontWeight: 500 }}>
@@ -218,7 +233,7 @@ export default function DashboardPage() {
               <ul className="list">
                 {summary.upcomingEvents.map((up) => (
                   <li
-                    key={up.id}
+                    key={`${up.source || 'local'}-${up.id}-${up.eventDate}`}
                     style={{
                       padding: '10px 0',
                       borderBottom: '1px solid var(--border-light)',
@@ -241,11 +256,23 @@ export default function DashboardPage() {
                         {up.daysLeft === 0 ? '오늘' : `D-${up.daysLeft}`}
                       </span>
                       <div>
-                        <strong>{up.name}</strong> 님 ({up.eventTypeIcon} {up.eventTitle})
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <strong>{up.name}</strong>
+                          {up.source === 'google' && (
+                            <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.72rem', padding: '2px 6px' }}>
+                              구글 캘린더
+                            </span>
+                          )}
+                          {up.eventTitle && <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>({up.eventTypeIcon} {up.eventTitle})</span>}
+                        </div>
                         <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>{up.eventDate}</div>
                       </div>
                     </div>
-                    <strong style={{ color: 'var(--fg)' }}>{formatMoney(up.amount)}</strong>
+                    {up.amount > 0 ? (
+                      <strong style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatMoney(up.amount)}</strong>
+                    ) : (
+                      <span style={{ fontSize: '0.82rem', color: 'var(--fg-muted)' }}>예정</span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -3,6 +3,7 @@ package dashboard
 
 import (
 	"database/sql"
+	"sort"
 	"time"
 
 	"kkomi-events/internal/core/db"
@@ -48,6 +49,7 @@ type UpcomingItem struct {
 	EventDate     string `json:"eventDate"`
 	DaysLeft      int    `json:"daysLeft"`
 	Amount        int64  `json:"amount"`
+	Source        string `json:"source"` // "local" 또는 "google"
 }
 
 // MonthlyStat 은 특정 월의 수입(받음)과 지출(보냄) 금액입니다.
@@ -110,22 +112,21 @@ func (s *Service) GetSummary() (*SummaryData, error) {
 
 	data.NetBalance = data.TotalReceivedAmount - data.TotalSentAmount
 
-	// 3. 다가오는 일정 건수 및 목록 (오늘 이후)
+	// 3. 다가오는 일정 건수 및 목록 (오늘 이후 로컬 + 구글 캘린더 캐시 통합)
 	today := time.Now().Format("2006-01-02")
-	_ = s.db.QueryRow(`SELECT COUNT(*) FROM sent WHERE event_date >= ? AND deleted_at IS NULL`, today).
-		Scan(&data.UpcomingCount)
+	todayTime, _ := time.Parse("2006-01-02", today)
 
 	upRows, err := s.db.Query(`SELECT s.id, s.name, COALESCE(t.name, '기타'), COALESCE(t.icon, '💌'), s.event_date, s.amount
 		FROM sent s
 		LEFT JOIN event_type t ON s.event_type_id=t.id
 		WHERE s.event_date >= ? AND s.deleted_at IS NULL
 		ORDER BY s.event_date ASC
-		LIMIT 5`, today)
+		LIMIT 10`, today)
 	if err == nil {
 		defer upRows.Close()
-		todayTime, _ := time.Parse("2006-01-02", today)
 		for upRows.Next() {
 			var up UpcomingItem
+			up.Source = "local"
 			if err := upRows.Scan(&up.ID, &up.Name, &up.EventTitle, &up.EventTypeIcon, &up.EventDate, &up.Amount); err == nil {
 				if dTime, err := time.Parse("2006-01-02", up.EventDate); err == nil {
 					up.DaysLeft = int(dTime.Sub(todayTime).Hours() / 24)
@@ -134,6 +135,40 @@ func (s *Service) GetSummary() (*SummaryData, error) {
 			}
 		}
 	}
+
+	// 캘린더 캐시 테이블이 존재하면 동기화된 구글 캘린더 일정 병합
+	calRows, err := s.db.Query(`SELECT id, title, event_date, COALESCE(location, ''), source FROM calendar_events_cache WHERE event_date >= ? ORDER BY event_date ASC LIMIT 10`, today)
+	if err == nil {
+		defer calRows.Close()
+		for calRows.Next() {
+			var id, title, eventDate, loc, src string
+			if err := calRows.Scan(&id, &title, &eventDate, &loc, &src); err == nil {
+				var daysLeft int
+				if dTime, err := time.Parse("2006-01-02", eventDate); err == nil {
+					daysLeft = int(dTime.Sub(todayTime).Hours() / 24)
+				}
+				data.UpcomingEvents = append(data.UpcomingEvents, UpcomingItem{
+					ID:            0,
+					Name:          title,
+					EventTitle:    loc,
+					EventTypeIcon: "📅",
+					EventDate:     eventDate,
+					DaysLeft:      daysLeft,
+					Amount:        0,
+					Source:        "google",
+				})
+			}
+		}
+	}
+
+	// D-Day 순 정렬 및 상위 6건 추출
+	sort.Slice(data.UpcomingEvents, func(i, j int) bool {
+		return data.UpcomingEvents[i].DaysLeft < data.UpcomingEvents[j].DaysLeft
+	})
+	if len(data.UpcomingEvents) > 6 {
+		data.UpcomingEvents = data.UpcomingEvents[:6]
+	}
+	data.UpcomingCount = len(data.UpcomingEvents)
 
 	// 4. 최근 경조사 내역 (받은 내역 + 보낸 내역 통합 최신 8건)
 	recentRows, err := s.db.Query(`

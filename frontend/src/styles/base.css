@@ -235,11 +235,29 @@ button {
 }
 
 .stat-value {
-  font-size: 1.85rem;
+  font-size: clamp(1.3rem, 1.8vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   margin-top: 6px;
   line-height: 1.15;
+  white-space: nowrap !important;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+}
+
+.stat-unit {
+  font-size: 0.85em;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.stat-korean {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+  margin-top: 4px;
+  white-space: nowrap !important;
 }
 
 /* ── 핀테크 모던 버튼 ── */
@@ -971,6 +989,35 @@ textarea.input-text {
     border: 1px solid #999 !important;
     background: transparent !important;
     color: black !important;
+  }
+}
+
+/* ── 회전 애니메이션 ── */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── 창모드 및 작은 해상도 반응형 보정 (1100px / 820px) ── */
+@media (max-width: 1100px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .stat-value {
+    font-size: 1.45rem !important;
   }
 }
 

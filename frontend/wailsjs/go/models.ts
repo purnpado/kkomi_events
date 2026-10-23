@@ -21,6 +21,59 @@ export namespace backup {
 
 }
 
+export namespace calendar {
+	
+	export class CalendarEvent {
+	    id: string;
+	    title: string;
+	    eventDate: string;
+	    dDay: number;
+	    location: string;
+	    description: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CalendarEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.eventDate = source["eventDate"];
+	        this.dDay = source["dDay"];
+	        this.location = source["location"];
+	        this.description = source["description"];
+	        this.source = source["source"];
+	    }
+	}
+	export class SyncConfig {
+	    mode: string;
+	    icalUrl: string;
+	    apiKey: string;
+	    calendarId: string;
+	    lastSyncAt: string;
+	    lastSyncMsg: string;
+	    syncCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SyncConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.icalUrl = source["icalUrl"];
+	        this.apiKey = source["apiKey"];
+	        this.calendarId = source["calendarId"];
+	        this.lastSyncAt = source["lastSyncAt"];
+	        this.lastSyncMsg = source["lastSyncMsg"];
+	        this.syncCount = source["syncCount"];
+	    }
+	}
+
+}
+
 export namespace customfield {
 	
 	export class CustomField {
@@ -118,6 +171,7 @@ export namespace dashboard {
 	    eventDate: string;
 	    daysLeft: number;
 	    amount: number;
+	    source: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpcomingItem(source);
@@ -132,6 +186,7 @@ export namespace dashboard {
 	        this.eventDate = source["eventDate"];
 	        this.daysLeft = source["daysLeft"];
 	        this.amount = source["amount"];
+	        this.source = source["source"];
 	    }
 	}
 	export class SummaryData {
