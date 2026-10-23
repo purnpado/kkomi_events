@@ -6,6 +6,10 @@ export function GetInfo() {
   return window['go']['system']['Service']['GetInfo']();
 }
 
+export function Navigate(arg1) {
+  return window['go']['system']['Service']['Navigate'](arg1);
+}
+
 export function Ping(arg1) {
   return window['go']['system']['Service']['Ping'](arg1);
 }

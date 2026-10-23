@@ -11,6 +11,13 @@ import (
 	"kkomi-events/internal/core/module"
 	"kkomi-events/internal/core/paths"
 	"kkomi-events/internal/core/version"
+	"kkomi-events/internal/modules/backup"
+	"kkomi-events/internal/modules/customfield"
+	"kkomi-events/internal/modules/dashboard"
+	"kkomi-events/internal/modules/eventtype"
+	"kkomi-events/internal/modules/matching"
+	"kkomi-events/internal/modules/myevent"
+	"kkomi-events/internal/modules/sent"
 	"kkomi-events/internal/modules/settings"
 	"kkomi-events/internal/modules/system"
 )
@@ -28,6 +35,13 @@ func main() {
 	reg = module.NewRegistry(
 		sys,
 		settings.New(),
+		eventtype.New(),
+		myevent.New(),
+		sent.New(),
+		matching.New(),
+		customfield.New(),
+		dashboard.New(),
+		backup.New(),
 	)
 	// ────────────────────────────────────────────────────
 

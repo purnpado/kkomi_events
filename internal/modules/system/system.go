@@ -106,3 +106,10 @@ func (s *Service) Ping(message string) {
 		s.bus.Publish("system", EventPing, map[string]string{"message": message})
 	}
 }
+
+// Navigate 는 화면 메뉴를 이동시키는 이벤트를 발행합니다.
+func (s *Service) Navigate(moduleID string) {
+	if s.bus != nil {
+		s.bus.Publish("system", "nav.goto", moduleID)
+	}
+}

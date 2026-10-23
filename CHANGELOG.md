@@ -1,12 +1,18 @@
 # 변경 이력
 
-## [0.1.0] - 2026-10-23 (개발 중, 미배포)
+## [0.1.0] - 2026-10-23
 ### 추가
-- Wails + Vite + React 프로젝트 생성, 실행 파일 이름 `꼬미경조사.exe`
-- 실행 파일 기준 절대 경로 계산 (`internal/core/paths`)
-- 이벤트 버스 (Go `internal/core/eventbus`, 화면 `core/eventBus.js`) 및 Go → 화면 자동 전달
-- 모듈 등록소와 모듈별 DB 마이그레이션 (`internal/core/module`, `internal/core/db`)
-- SQLite DB 자동 생성 (`data/kkomi.db`), 한글·공백 경로 테스트
-- 모듈: system(시스템 정보), settings(설정)
-- 중복 실행 방지, 로그 파일(`logs/kkomi.log`)
-- 문서: README, AGENTS, HANDOVER, 기획안, 이벤트 목록
+- Wails + React + Radix UI 기반 윈도우 단독 실행 프로그램 `꼬미경조사.exe` 구축
+- 오프라인 단독 번들용 **프리텐다드 가변 폰트(Pretendard Variable)** 완전 내장 적용
+- 모듈화 & 이벤트 기반 아키텍처 (`internal/core/eventbus` 및 프론트 `core/eventBus.js`)
+- 실행 파일 기준 절대 경로(`internal/core/paths`) 및 순수 Go SQLite(`modernc.org/sqlite`) 자동 초기화
+- **나의 경조사 (`myevent`)**: 결혼, 돌잔치, 장례식 등 탭별 행사 관리 및 축의금/부의금 받은 내역 관리
+- **경조사 탭 관리 (`eventtype`)**: 탭 추가, 이름 변경, 아이콘 선택, 순서 변경, 숨기기, 삭제
+- **타인의 경조사 (`sent`)**: 상대방 경조사비 지출 기록 (날짜, 경조사 종류, 금액, 참석 여부, 비고)
+- **사람별 매칭 (`matching`)**: 이름과 전화번호 기준 수입/지출 교차 매칭, 갚을 차례/받을 차례/균형 판정, 주고받은 타임라인 기록 일지, 타인 경조사 입력 시 참고 힌트 자동 알림
+- **대시보드 (`dashboard`)**: 수지 균형 요약 및 라이브러리 없는 순수 **HTML5 Canvas 2D 월별 수입/지출 비교 막대 차트**
+- **사용자 정의 추가 항목 (`customfield`)**: 각 메뉴별 사용자가 원하는 컬럼 자유 추가
+- **자동 백업 (`backup`)**: 프로그램 종료 시 자동 백업 및 원클릭 수동 백업 생성, 30개 초과 시 오래된 파일 정리
+- **설정 (`settings`)**: 라이트/다크 테마, 혼자 사용/함께 사용(공동 사용 모드: 손님 구분 활성화), 글자 크기(1.0x~1.2x) 조절
+- **스마트 금액 입력기 (`AmountInput`)**: 천 단위 콤마 서식, 3만/5만/10만/20만 빠른 칩 버튼, 한글 금액 실시간 표기
+- **문서화**: `README.md`, `AGENTS.md`, `HANDOVER.md`, `docs/기획안.md`, `docs/이벤트목록.md`

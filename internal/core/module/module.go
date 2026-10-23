@@ -84,7 +84,9 @@ func (r *Registry) Setup(c *Context) error {
 		if err := m.Init(c); err != nil {
 			return fmt.Errorf("모듈 초기화 실패 [%s]: %w", m.Name(), err)
 		}
-		c.Log.Info("모듈 준비 완료", "module", m.Name())
+		if c.Log != nil {
+			c.Log.Info("모듈 준비 완료", "module", m.Name())
+		}
 	}
 	return nil
 }

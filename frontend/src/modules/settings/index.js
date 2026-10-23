@@ -3,6 +3,7 @@
 import { api } from '../../core/api';
 import { on } from '../../core/eventBus';
 import { registerModule } from '../../core/registry';
+import SettingsPage from './SettingsPage';
 
 function applySetting(key, value) {
   const root = document.documentElement;
@@ -16,7 +17,7 @@ registerModule({
   icon: '⚙️',
   order: 800,
   section: 'system',
-  Page: null, // 2단계 이후 설정 화면 추가 예정
+  Page: SettingsPage,
   setup() {
     on('settings.changed', (e) => applySetting(e.payload.key, e.payload.value));
     api.settings
