@@ -23,6 +23,7 @@ import (
 	"kkomi-events/internal/modules/settings"
 	"kkomi-events/internal/modules/system"
 	"kkomi-events/internal/modules/trash"
+	"kkomi-events/internal/modules/updater"
 )
 
 //go:embed all:frontend/dist
@@ -48,6 +49,7 @@ func main() {
 		excelio.New(),
 		calendar.New(),
 		trash.New(),
+		updater.New(),
 	)
 	// ────────────────────────────────────────────────────
 

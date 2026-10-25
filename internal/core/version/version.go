@@ -6,4 +6,4 @@ package version
 const AppName = "꼬미경조사"
 
 // Version 은 현재 프로그램 버전입니다.
-var Version = "0.1.0"
+var Version = "0.1.1"

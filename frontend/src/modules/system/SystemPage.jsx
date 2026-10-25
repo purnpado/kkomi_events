@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../core/api';
+import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { MessageSquare, ExternalLink } from 'lucide-react';
+import { MessageSquare, ExternalLink, RefreshCw } from 'lucide-react';
 
 function formatBytes(n) {
   if (!n) return '0 B';
@@ -33,6 +34,32 @@ export default function SystemPage() {
     setEvents((list) => [e, ...list].slice(0, 12));
   });
 
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const uInfo = await api.updater.checkUpdate();
+      if (uInfo && uInfo.hasUpdate) {
+        emit('updater.showModal', uInfo);
+      } else {
+        emit('toast.show', {
+          title: '최신 버전 사용 중',
+          message: `현재 최신 버전(v${uInfo?.currentVersion || info?.version || '0.1.1'})을 사용하고 계십니다.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', {
+        title: '업데이트 확인 실패',
+        message: String(err),
+        type: 'error',
+      });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   const ping = () => api.system.ping('이벤트 연결 테스트').catch((e) => setError(String(e)));
 
   return (
@@ -46,9 +73,20 @@ export default function SystemPage() {
       {error && <div className="alert-error">⚠️ {error}</div>}
 
       <section className="grid grid-4" style={{ marginBottom: 16 }}>
-        <div className="card">
-          <div className="stat-label">버전</div>
-          <div className="stat-value">v{info?.version ?? '-'}</div>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div className="stat-label">프로그램 버전</div>
+            <div className="stat-value">v{info?.version ?? '-'}</div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ marginTop: 8, fontSize: '0.78rem', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, width: 'fit-content' }}
+            disabled={checkingUpdate}
+            onClick={handleCheckUpdate}
+          >
+            <RefreshCw size={12} className={checkingUpdate ? 'spin' : ''} /> 업데이트 확인
+          </button>
         </div>
         <div className="card">
           <div className="stat-label">데이터베이스</div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2, MessageSquare } from 'lucide-react';
+import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2, MessageSquare, Sparkles } from 'lucide-react';
 import TrashModal from '../../ui/TrashModal';
 
 export default function SettingsPage() {
@@ -83,6 +83,32 @@ export default function SettingsPage() {
       });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const info = await api.updater.checkUpdate();
+      if (info && info.hasUpdate) {
+        emit('updater.showModal', info);
+      } else {
+        emit('toast.show', {
+          title: '최신 버전 사용 중',
+          message: `현재 최신 버전(v${info?.currentVersion || '0.1.1'})을 사용하고 계십니다.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      emit('toast.show', {
+        title: '업데이트 확인 실패',
+        message: String(err),
+        type: 'error',
+      });
+    } finally {
+      setCheckingUpdate(false);
     }
   };
 
@@ -467,6 +493,30 @@ export default function SettingsPage() {
             {calConfig.lastSyncMsg}
           </div>
         )}
+      </div>
+
+      {/* 🚀 자동 업데이트 및 배포 버전 확인 */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.02rem', fontWeight: 700, color: 'var(--fg)', marginBottom: 4 }}>
+              <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+              <span>프로그램 자동 업데이트</span>
+            </div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+              공식 GitHub 배포 저장소(<code>purnpado/kkomi_events</code>)에서 새 버전을 확인하고 안전하게 다운로드합니다.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', fontSize: '0.88rem' }}
+            disabled={checkingUpdate}
+            onClick={handleCheckUpdate}
+          >
+            {checkingUpdate ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />} 최신 버전 확인
+          </button>
+        </div>
       </div>
 
       {/* 💬 커뮤니티 지원 및 피드백 */}

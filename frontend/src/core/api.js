@@ -156,12 +156,23 @@ export async function call(path, ...args) {
       return true;
     case 'calendar.Service.OpenURL':
     case 'system.Service.OpenURL':
-      window.open(args[0], '_blank');
+    case 'updater.Service.OpenReleasePage':
+      window.open(args[0] || 'https://github.com/purnpado/kkomi_events/releases', '_blank');
       return true;
+    case 'updater.Service.CheckUpdate':
+      return {
+        hasUpdate: false,
+        currentVersion: '0.1.1',
+        latestVersion: 'v0.1.1',
+        releaseName: 'V0.1.1',
+        releaseBody: '자동 업데이트 및 GitHub 릴리즈 이중화',
+        releaseUrl: 'https://github.com/purnpado/kkomi_events/releases',
+        downloadUrl: 'https://github.com/purnpado/kkomi_events/releases',
+      };
     case 'system.Service.GetInfo':
       return {
         appName: '꼬미경조사 (미리보기)',
-        version: '0.1.0',
+        version: '0.1.1',
         dbReady: true,
         startedAt: new Date().toISOString(),
       };
@@ -255,5 +266,9 @@ export const api = {
     restoreAll: () => call('trash.Service.RestoreAll'),
     purge: (itemType, id) => call('trash.Service.Purge', itemType, id),
     purgeAll: () => call('trash.Service.PurgeAll'),
+  },
+  updater: {
+    checkUpdate: () => call('updater.Service.CheckUpdate'),
+    openReleasePage: (url) => call('updater.Service.OpenReleasePage', url),
   },
 };

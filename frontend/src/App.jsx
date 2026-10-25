@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getModules } from './core/registry';
 import { useBusEvent } from './core/hooks';
 import { api } from './core/api';
 import ToastProvider from './ui/Toast';
+import UpdateModal from './ui/UpdateModal';
 import logoImg from './assets/logo.png';
-import { MessageSquare, ExternalLink } from 'lucide-react';
+import { MessageSquare, ExternalLink, Sparkles } from 'lucide-react';
 
 const SECTION_TITLES = { main: '장부', tools: '도구', system: '시스템' };
 
@@ -16,6 +17,10 @@ export default function App() {
   const active = modules.find((m) => m.id === activeId);
   const sections = ['main', 'tools', 'system'].filter((s) => modules.some((m) => m.section === s));
 
+  // 자동 업데이트 상태
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+
   const changeTab = (id) => {
     setActiveId(id);
     localStorage.setItem('kkomi_active_tab', id);
@@ -24,6 +29,20 @@ export default function App() {
   // nav.goto 이벤트 수신 시 해당 화면으로 자동 이동
   useBusEvent('nav.goto', (e) => {
     if (e.payload) setActiveId(e.payload);
+  });
+
+  // 백엔드에서 새 버전 발견 시 자동 팝업 및 상태 저장
+  useBusEvent('updater.available', (e) => {
+    if (e.payload && e.payload.hasUpdate) {
+      setUpdateInfo(e.payload);
+      setUpdateModalOpen(true);
+    }
+  });
+
+  // 수동 확인 등에서 모달 오픈 요청
+  useBusEvent('updater.showModal', (e) => {
+    if (e.payload) setUpdateInfo(e.payload);
+    setUpdateModalOpen(true);
   });
 
   // 외부 및 테스트용 네비게이션 함수 노출
@@ -40,7 +59,31 @@ export default function App() {
           </div>
           <div>
             <div className="brand-name">꼬미경조사</div>
-            <div className="brand-ver">경조사비 장부</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span className="brand-ver">경조사비 장부</span>
+              {updateInfo?.hasUpdate && (
+                <button
+                  type="button"
+                  onClick={() => setUpdateModalOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '2px 7px',
+                    borderRadius: 12,
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  title="새로운 버전이 있습니다! 클릭하여 확인하세요."
+                >
+                  <Sparkles size={10} /> NEW
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <nav aria-label="주 메뉴">
@@ -101,6 +144,11 @@ export default function App() {
       </aside>
       <main className="main">{active ? <active.Page /> : <p>메뉴를 선택하세요.</p>}</main>
       <ToastProvider />
+      <UpdateModal
+        isOpen={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+        updateInfo={updateInfo}
+      />
     </div>
   );
 }

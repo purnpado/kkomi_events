@@ -653,3 +653,34 @@ export namespace trash {
 
 }
 
+export namespace updater {
+	
+	export class UpdateInfo {
+	    hasUpdate: boolean;
+	    currentVersion: string;
+	    latestVersion: string;
+	    releaseName: string;
+	    releaseBody: string;
+	    releaseUrl: string;
+	    downloadUrl: string;
+	    publishedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasUpdate = source["hasUpdate"];
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.releaseName = source["releaseName"];
+	        this.releaseBody = source["releaseBody"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.publishedAt = source["publishedAt"];
+	    }
+	}
+
+}
+
