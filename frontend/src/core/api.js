@@ -162,17 +162,17 @@ export async function call(path, ...args) {
     case 'updater.Service.CheckUpdate':
       return {
         hasUpdate: false,
-        currentVersion: '0.1.1',
-        latestVersion: 'v0.1.1',
-        releaseName: 'V0.1.1',
-        releaseBody: '자동 업데이트 및 GitHub 릴리즈 이중화',
+        currentVersion: '0.1.2',
+        latestVersion: 'v0.1.2',
+        releaseName: 'V0.1.2',
+        releaseBody: '화면 잠금 및 PIN 번호 보안, 자동 업데이트 기능',
         releaseUrl: 'https://github.com/purnpado/kkomi_events/releases',
         downloadUrl: 'https://github.com/purnpado/kkomi_events/releases',
       };
     case 'system.Service.GetInfo':
       return {
         appName: '꼬미경조사 (미리보기)',
-        version: '0.1.1',
+        version: '0.1.2',
         dbReady: true,
         startedAt: new Date().toISOString(),
       };
