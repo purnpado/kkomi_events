@@ -524,6 +524,33 @@ export namespace paths {
 
 }
 
+export namespace security {
+	
+	export class SecurityStatus {
+	    isPinSet: boolean;
+	    enabled: boolean;
+	    autoLockMinutes: number;
+	    failCount: number;
+	    isLockedOut: boolean;
+	    lockoutSeconds: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SecurityStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.isPinSet = source["isPinSet"];
+	        this.enabled = source["enabled"];
+	        this.autoLockMinutes = source["autoLockMinutes"];
+	        this.failCount = source["failCount"];
+	        this.isLockedOut = source["isLockedOut"];
+	        this.lockoutSeconds = source["lockoutSeconds"];
+	    }
+	}
+
+}
+
 export namespace sent {
 	
 	export class SentItem {

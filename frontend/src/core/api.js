@@ -176,6 +176,49 @@ export async function call(path, ...args) {
         dbReady: true,
         startedAt: new Date().toISOString(),
       };
+    case 'security.Service.GetStatus': {
+      const pin = localStorage.getItem('kkomi_mock_pin') || '';
+      const enabled = localStorage.getItem('kkomi_mock_lock_enabled') === 'true';
+      const autoLock = parseInt(localStorage.getItem('kkomi_mock_autolock') || '5', 10);
+      return {
+        isPinSet: !!pin,
+        enabled: !!pin && enabled,
+        autoLockMinutes: autoLock,
+        failCount: 0,
+        isLockedOut: false,
+        lockoutSeconds: 0,
+      };
+    }
+    case 'security.Service.SetupInitialPin': {
+      const pin = args[0] || '';
+      if (!/^\d{4}$/.test(pin)) throw new Error('PIN 번호는 4자리 숫자여야 합니다.');
+      localStorage.setItem('kkomi_mock_pin', pin);
+      localStorage.setItem('kkomi_mock_lock_enabled', 'true');
+      localStorage.setItem('kkomi_mock_autolock', '5');
+      return true;
+    }
+    case 'security.Service.VerifyPin': {
+      const pin = args[0] || '';
+      const savedPin = localStorage.getItem('kkomi_mock_pin') || '';
+      if (pin === savedPin) return true;
+      throw new Error('PIN 번호가 일치하지 않습니다.');
+    }
+    case 'security.Service.ChangePin': {
+      const [oldPin, newPin] = args;
+      const savedPin = localStorage.getItem('kkomi_mock_pin') || '';
+      if (oldPin !== savedPin) throw new Error('현재 PIN 번호가 일치하지 않습니다.');
+      if (!/^\d{4}$/.test(newPin)) throw new Error('새 PIN 번호는 4자리 숫자여야 합니다.');
+      localStorage.setItem('kkomi_mock_pin', newPin);
+      return true;
+    }
+    case 'security.Service.UpdateConfig': {
+      const [enabled, autoLockMinutes, currentPin] = args;
+      const savedPin = localStorage.getItem('kkomi_mock_pin') || '';
+      if (currentPin !== savedPin) throw new Error('현재 PIN 번호가 일치하지 않습니다.');
+      localStorage.setItem('kkomi_mock_lock_enabled', String(enabled));
+      localStorage.setItem('kkomi_mock_autolock', String(autoLockMinutes));
+      return true;
+    }
     default:
       return null;
   }
@@ -271,4 +314,13 @@ export const api = {
     checkUpdate: () => call('updater.Service.CheckUpdate'),
     openReleasePage: (url) => call('updater.Service.OpenReleasePage', url),
   },
+  security: {
+    getStatus: () => call('security.Service.GetStatus'),
+    setupInitialPin: (pin) => call('security.Service.SetupInitialPin', pin),
+    verifyPin: (pin) => call('security.Service.VerifyPin', pin),
+    changePin: (oldPin, newPin) => call('security.Service.ChangePin', oldPin, newPin),
+    updateConfig: (enabled, autoLockMinutes, currentPin) =>
+      call('security.Service.UpdateConfig', enabled, autoLockMinutes, currentPin),
+  },
 };
+

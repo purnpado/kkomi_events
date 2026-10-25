@@ -1051,5 +1051,18 @@ textarea.input-text {
   transform: translateY(0);
 }
 
+/* 키패드 및 잠금화면 흔들림 애니메이션 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.keypad-btn:hover:not(:disabled) {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
 
 

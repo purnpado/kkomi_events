@@ -19,6 +19,7 @@ import (
 	"kkomi-events/internal/modules/excelio"
 	"kkomi-events/internal/modules/matching"
 	"kkomi-events/internal/modules/myevent"
+	"kkomi-events/internal/modules/security"
 	"kkomi-events/internal/modules/sent"
 	"kkomi-events/internal/modules/settings"
 	"kkomi-events/internal/modules/system"
@@ -38,6 +39,7 @@ func main() {
 	sys := system.New(func() []string { return reg.Names() })
 	reg = module.NewRegistry(
 		sys,
+		security.New(),
 		settings.New(),
 		eventtype.New(),
 		myevent.New(),

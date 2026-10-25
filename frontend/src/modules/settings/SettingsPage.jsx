@@ -2,11 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2, MessageSquare, Sparkles } from 'lucide-react';
+import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2, MessageSquare, Sparkles, Lock, Shield, KeyRound, Clock, ShieldCheck } from 'lucide-react';
 import TrashModal from '../../ui/TrashModal';
+import PinChangeModal from '../../ui/PinChangeModal';
 
 export default function SettingsPage() {
   const [trashOpen, setTrashOpen] = useState(false);
+  const [pinChangeOpen, setPinChangeOpen] = useState(false);
+  const [securityStatus, setSecurityStatus] = useState({
+    isPinSet: false,
+    enabled: true,
+    autoLockMinutes: 5,
+  });
+  const [pinPromptOpen, setPinPromptOpen] = useState(false);
+  const [pendingConfig, setPendingConfig] = useState(null);
+  const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [pinPromptError, setPinPromptError] = useState('');
+
   const [settings, setSettings] = useState({
     theme: 'light',
     usage_mode: 'solo',
@@ -37,12 +49,26 @@ export default function SettingsPage() {
     }
   };
 
+  const loadSecurityStatus = async () => {
+    try {
+      const st = await api.security.getStatus();
+      if (st) setSecurityStatus(st);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     api.settings.getAll().then((data) => {
       if (data) setSettings((prev) => ({ ...prev, ...data }));
     }).catch(console.error);
     loadCalendarConfig();
+    loadSecurityStatus();
   }, []);
+
+  useBusEvent('security.changed', () => {
+    loadSecurityStatus();
+  });
 
   const handleModeChange = async (newMode) => {
     setCalConfig((prev) => ({ ...prev, mode: newMode }));
@@ -135,6 +161,46 @@ export default function SettingsPage() {
         message: String(err),
         type: 'error',
       });
+    }
+  };
+
+  const handleRequestConfigChange = (newEnabled, newAutoLock) => {
+    setPendingConfig({
+      enabled: newEnabled !== undefined ? newEnabled : securityStatus.enabled,
+      autoLockMinutes: newAutoLock !== undefined ? newAutoLock : securityStatus.autoLockMinutes,
+    });
+    setConfirmPinInput('');
+    setPinPromptError('');
+    setPinPromptOpen(true);
+  };
+
+  const handleSubmitConfigWithPin = async (e) => {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(confirmPinInput)) {
+      setPinPromptError('PIN 번호 4자리를 정확히 입력해 주세요.');
+      return;
+    }
+    try {
+      await api.security.updateConfig(
+        pendingConfig.enabled,
+        pendingConfig.autoLockMinutes,
+        confirmPinInput
+      );
+      setSecurityStatus((prev) => ({
+        ...prev,
+        enabled: pendingConfig.enabled,
+        autoLockMinutes: pendingConfig.autoLockMinutes,
+      }));
+      setPinPromptOpen(false);
+      setPendingConfig(null);
+      setConfirmPinInput('');
+      emit('toast.show', {
+        title: '보안 설정 변경 완료',
+        message: '화면 잠금 보안 설정이 안전하게 저장되었습니다.',
+        type: 'success',
+      });
+    } catch (err) {
+      setPinPromptError(err.message || '비밀번호가 일치하지 않습니다.');
     }
   };
 
@@ -284,6 +350,121 @@ export default function SettingsPage() {
             >
               <Database size={15} /> 지금 즉시 백업 파일 생성
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 화면 잠금 및 보안 (PIN) 설정 카드 ── */}
+      <div className="card" style={{ marginTop: 24, border: '1.5px solid var(--border-light)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'grid', placeItems: 'center' }}>
+              <Lock size={20} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>화면 잠금 및 PIN 보안 설정</h2>
+                {securityStatus.enabled ? (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#dcfce7', color: '#15803d' }}>
+                    보안 켜짐
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#f1f5f9', color: '#64748b' }}>
+                    잠금 해제됨 (미사용)
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--fg-muted)' }}>
+                프로그램 실행 시 및 자리 비움 시 장부 화면을 4자리 비밀번호로 안전하게 보호합니다.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => emit('security.lock')}
+              title="지금 즉시 장부 화면을 잠급니다."
+            >
+              <Lock size={15} /> 지금 화면 잠그기
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setPinChangeOpen(true)}
+              title="4자리 PIN 비밀번호를 변경합니다."
+            >
+              <KeyRound size={15} /> PIN 번호 변경
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18, background: 'var(--bg-sunken)', padding: 18, borderRadius: 'var(--radius)' }}>
+          {/* 사용 여부 스위치 */}
+          <div>
+            <label className="form-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={16} /> 화면 잠금 기능 사용 여부
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className={`btn ${securityStatus.enabled ? '' : 'btn-ghost'}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => handleRequestConfigChange(true, undefined)}
+              >
+                <Lock size={15} /> 잠금 사용
+                {securityStatus.enabled && <Check size={15} />}
+              </button>
+              <button
+                type="button"
+                className={`btn ${!securityStatus.enabled ? '' : 'btn-ghost'}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => handleRequestConfigChange(false, undefined)}
+              >
+                사용 안 함
+                {!securityStatus.enabled && <Check size={15} />}
+              </button>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 6 }}>
+              {securityStatus.enabled ? '프로그램 시작 시 및 일정 시간 미입력 시 잠금 화면이 뜹니다.' : '비밀번호 확인 없이 프로그램이 바로 시작됩니다.'}
+            </div>
+          </div>
+
+          {/* 자동 잠금 대기 시간 */}
+          <div>
+            <label className="form-label" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={16} /> 자리 비움 자동 잠금 대기 시간
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { val: 1, label: '1분' },
+                { val: 3, label: '3분' },
+                { val: 5, label: '5분 (권장)' },
+                { val: 10, label: '10분' },
+                { val: 15, label: '15분' },
+                { val: 30, label: '30분' },
+                { val: 0, label: '미사용' },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  disabled={!securityStatus.enabled}
+                  className={`btn ${securityStatus.autoLockMinutes === opt.val ? '' : 'btn-ghost'}`}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '0.82rem',
+                    opacity: !securityStatus.enabled ? 0.4 : 1,
+                  }}
+                  onClick={() => handleRequestConfigChange(undefined, opt.val)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)', marginTop: 6 }}>
+              마우스나 키보드 입력이 지정된 시간 동안 없으면 자동으로 화면이 잠깁니다.
+            </div>
           </div>
         </div>
       </div>
@@ -545,6 +726,78 @@ export default function SettingsPage() {
 
       {/* 휴지통 모달 */}
       <TrashModal isOpen={trashOpen} onClose={() => setTrashOpen(false)} />
+
+      {/* PIN 번호 변경 모달 */}
+      <PinChangeModal isOpen={pinChangeOpen} onClose={() => setPinChangeOpen(false)} />
+
+      {/* 보안 설정 변경을 위한 PIN 확인 팝업 */}
+      {pinPromptOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9998,
+            background: 'rgba(15, 23, 42, 0.45)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => setPinPromptOpen(false)}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              background: '#ffffff',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fef3c7', color: '#d97706', display: 'grid', placeItems: 'center' }}>
+                <Lock size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>보안 확인</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--fg-muted)' }}>
+                  설정을 변경하려면 4자리 PIN 번호를 입력하세요.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitConfigWithPin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {pinPromptError && (
+                <div style={{ padding: '8px 10px', borderRadius: 8, background: '#fef2f2', color: '#dc2626', fontSize: '0.82rem', fontWeight: 600 }}>
+                  {pinPromptError}
+                </div>
+              )}
+              <input
+                type="password"
+                maxLength={4}
+                className="input-text"
+                placeholder="••••"
+                value={confirmPinInput}
+                onChange={(e) => setConfirmPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                style={{ fontSize: '1.25rem', letterSpacing: '0.4em', textAlign: 'center' }}
+                autoFocus
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setPinPromptOpen(false)}>
+                  취소
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={confirmPinInput.length !== 4}>
+                  확인
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

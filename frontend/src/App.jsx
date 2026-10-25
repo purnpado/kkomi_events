@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getModules } from './core/registry';
 import { useBusEvent } from './core/hooks';
 import { api } from './core/api';
 import ToastProvider from './ui/Toast';
 import UpdateModal from './ui/UpdateModal';
+import LockScreen from './ui/LockScreen';
 import logoImg from './assets/logo.png';
-import { MessageSquare, ExternalLink, Sparkles } from 'lucide-react';
+import { MessageSquare, ExternalLink, Sparkles, Lock } from 'lucide-react';
 
 const SECTION_TITLES = { main: '장부', tools: '도구', system: '시스템' };
 
@@ -17,6 +18,12 @@ export default function App() {
   const active = modules.find((m) => m.id === activeId);
   const sections = ['main', 'tools', 'system'].filter((s) => modules.some((m) => m.section === s));
 
+  // 보안 및 화면 잠금 상태
+  const [securityStatus, setSecurityStatus] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isSettingUpPin, setIsSettingUpPin] = useState(false);
+  const lastActivityRef = useRef(Date.now());
+
   // 자동 업데이트 상태
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -25,6 +32,77 @@ export default function App() {
     setActiveId(id);
     localStorage.setItem('kkomi_active_tab', id);
   };
+
+  // 보안 상태 로드 및 프로그램 시작 시 잠금 판정
+  const loadSecurity = async () => {
+    try {
+      const st = await api.security.getStatus();
+      setSecurityStatus(st);
+      if (!st.isPinSet) {
+        // 최초 실행: 4자리 PIN 등록 화면 표시
+        setIsSettingUpPin(true);
+      } else if (st.enabled) {
+        // 프로그램 실행 시: 화면 잠금 상태로 진입
+        setIsLocked(true);
+      }
+    } catch (err) {
+      console.error('보안 상태 확인 오류:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadSecurity();
+  }, []);
+
+  // 보안 설정 변경 이벤트 감지
+  useBusEvent('security.changed', () => {
+    api.security.getStatus().then((st) => {
+      setSecurityStatus(st);
+      if (st.isPinSet) setIsSettingUpPin(false);
+    });
+  });
+
+  // 수동 즉시 잠금 이벤트
+  useBusEvent('security.lock', () => {
+    if (securityStatus?.isPinSet && securityStatus?.enabled) {
+      setIsLocked(true);
+    }
+  });
+
+  // 자리 비움 자동 잠금 감지 타이머
+  useEffect(() => {
+    if (!securityStatus?.enabled || !securityStatus?.autoLockMinutes || securityStatus.autoLockMinutes <= 0) {
+      return;
+    }
+
+    const resetIdleTimer = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('mousemove', resetIdleTimer);
+    window.addEventListener('mousedown', resetIdleTimer);
+    window.addEventListener('keydown', resetIdleTimer);
+    window.addEventListener('scroll', resetIdleTimer, true);
+    window.addEventListener('touchstart', resetIdleTimer);
+
+    const checkInterval = setInterval(() => {
+      if (isLocked || isSettingUpPin) return;
+      const idleMs = Date.now() - lastActivityRef.current;
+      const limitMs = securityStatus.autoLockMinutes * 60 * 1000;
+      if (idleMs >= limitMs) {
+        setIsLocked(true);
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('mousemove', resetIdleTimer);
+      window.removeEventListener('mousedown', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+      window.removeEventListener('scroll', resetIdleTimer, true);
+      window.removeEventListener('touchstart', resetIdleTimer);
+      clearInterval(checkInterval);
+    };
+  }, [securityStatus, isLocked, isSettingUpPin]);
 
   // nav.goto 이벤트 수신 시 해당 화면으로 자동 이동
   useBusEvent('nav.goto', (e) => {
@@ -107,7 +185,28 @@ export default function App() {
             </div>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* 화면 잠그기 버튼 (보안 잠금 활성화 시) */}
+          {securityStatus?.isPinSet && securityStatus?.enabled && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: '0.82rem',
+                color: 'var(--fg-muted)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+              onClick={() => setIsLocked(true)}
+              title="지금 즉시 장부 화면을 잠급니다."
+            >
+              <Lock size={13} /> 화면 잠그기
+            </button>
+          )}
+
           {/* 피드백 및 건의사항 버튼 (꾹링크 커뮤니티 게시판 바로가기) */}
           <button
             type="button"
@@ -149,6 +248,29 @@ export default function App() {
         onClose={() => setUpdateModalOpen(false)}
         updateInfo={updateInfo}
       />
+
+      {/* 🔒 최초 4자리 PIN 등록 화면 */}
+      {isSettingUpPin && (
+        <LockScreen
+          mode="setup"
+          onSetupComplete={() => {
+            setIsSettingUpPin(false);
+            setIsLocked(false);
+            loadSecurity();
+          }}
+        />
+      )}
+
+      {/* 🔒 화면 잠금 해제 화면 */}
+      {isLocked && !isSettingUpPin && (
+        <LockScreen
+          mode="unlock"
+          onUnlocked={() => {
+            setIsLocked(false);
+            lastActivityRef.current = Date.now();
+          }}
+        />
+      )}
     </div>
   );
 }
