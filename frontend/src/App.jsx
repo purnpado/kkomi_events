@@ -123,6 +123,24 @@ export default function App() {
     setUpdateModalOpen(true);
   });
 
+  // 프로그램 시작 시 최신 버전 백그라운드 자동 확인
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      api.updater
+        .checkUpdate()
+        .then((info) => {
+          if (info && info.hasUpdate) {
+            setUpdateInfo(info);
+            setUpdateModalOpen(true);
+          }
+        })
+        .catch((err) => {
+          console.warn('업데이트 백그라운드 확인 실패:', err);
+        });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // 외부 및 테스트용 네비게이션 함수 노출
   if (typeof window !== 'undefined') {
     window.__kkomiNav = (id) => setActiveId(id);

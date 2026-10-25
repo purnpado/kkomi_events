@@ -312,6 +312,7 @@ export const api = {
   },
   updater: {
     checkUpdate: () => call('updater.Service.CheckUpdate'),
+    applyUpdate: (downloadUrl) => call('updater.Service.ApplyUpdate', downloadUrl),
     openReleasePage: (url) => call('updater.Service.OpenReleasePage', url),
   },
   security: {
