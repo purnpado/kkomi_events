@@ -1,7 +1,7 @@
-// 시스템 정보 화면: 프로그램 상태와 이벤트 연결을 확인합니다.
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { useBusEvent } from '../../core/hooks';
+import { MessageSquare, ExternalLink } from 'lucide-react';
 
 function formatBytes(n) {
   if (!n) return '0 B';
@@ -65,6 +65,30 @@ export default function SystemPage() {
           <div className="stat-value">{info?.modules?.length ?? 0}개</div>
         </div>
       </section>
+
+      {/* 💬 피드백 및 커뮤니티 배너 */}
+      <div className="card" style={{ marginBottom: 16, background: '#f0f9ff', borderColor: '#bae6fd' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+              <MessageSquare size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.96rem', fontWeight: 700, color: '#0369a1' }}>꼬미경조사 공식 피드백 게시판</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--fg-muted)' }}>꾹링크 커뮤니티에서 새로운 기능 제안이나 개선 의견을 전해주세요.</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ color: '#0284c7', borderColor: '#bae6fd', background: '#fff', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.84rem' }}
+            onClick={() => api.system.openUrl('https://gguk.link/boards/kkomi_events')}
+            title="꼬미경조사 · 꾹링크 게시판으로 이동합니다."
+          >
+            <ExternalLink size={13} /> 꼬미경조사 · 꾹링크 방문하기
+          </button>
+        </div>
+      </div>
 
       <section className="grid grid-2">
         <div className="card">

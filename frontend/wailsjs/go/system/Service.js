@@ -10,6 +10,10 @@ export function Navigate(arg1) {
   return window['go']['system']['Service']['Navigate'](arg1);
 }
 
+export function OpenURL(arg1) {
+  return window['go']['system']['Service']['OpenURL'](arg1);
+}
+
 export function Ping(arg1) {
   return window['go']['system']['Service']['Ping'](arg1);
 }

@@ -155,6 +155,7 @@ export async function call(path, ...args) {
     case 'trash.Service.PurgeAll':
       return true;
     case 'calendar.Service.OpenURL':
+    case 'system.Service.OpenURL':
       window.open(args[0], '_blank');
       return true;
     case 'system.Service.GetInfo':
@@ -175,6 +176,7 @@ export const api = {
     getInfo: () => call('system.Service.GetInfo'),
     ping: (msg) => call('system.Service.Ping', msg),
     navigate: (id) => call('system.Service.Navigate', id),
+    openUrl: (url) => call('system.Service.OpenURL', url),
   },
   settings: {
     getAll: () => call('settings.Service.GetAll'),

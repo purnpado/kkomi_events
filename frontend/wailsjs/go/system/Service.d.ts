@@ -6,4 +6,6 @@ export function GetInfo():Promise<system.Info>;
 
 export function Navigate(arg1:string):Promise<void>;
 
+export function OpenURL(arg1:string):Promise<void>;
+
 export function Ping(arg1:string):Promise<void>;

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import { Sun, Moon, Users, User, Type, Database, Check, Calendar, ExternalLink, RefreshCw, Trash2, MessageSquare } from 'lucide-react';
 import TrashModal from '../../ui/TrashModal';
 
 export default function SettingsPage() {
@@ -467,6 +467,30 @@ export default function SettingsPage() {
             {calConfig.lastSyncMsg}
           </div>
         )}
+      </div>
+
+      {/* 💬 커뮤니티 지원 및 피드백 */}
+      <div className="card" style={{ marginTop: 16, background: 'linear-gradient(135deg, hsl(200 100% 98%), hsl(210 100% 99%))', borderColor: 'hsl(200 80% 88%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.02rem', fontWeight: 700, color: '#0369a1', marginBottom: 4 }}>
+              <MessageSquare size={18} />
+              <span>피드백 및 기능 제안 (꼬미경조사 · 꾹링크)</span>
+            </div>
+            <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+              프로그램 사용 중 건의사항, 개선 의견, 버그 제보가 있으시면 언제든 커뮤니티에 남겨주세요.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn"
+            style={{ background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: '0.88rem' }}
+            onClick={() => api.system.openUrl('https://gguk.link/boards/kkomi_events')}
+            title="새 브라우저 창에서 꼬미경조사 · 꾹링크 게시판을 엽니다."
+          >
+            <ExternalLink size={14} /> 피드백 게시판 바로가기
+          </button>
+        </div>
       </div>
 
       {/* 휴지통 모달 */}

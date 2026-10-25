@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { getModules } from './core/registry';
 import { useBusEvent } from './core/hooks';
+import { api } from './core/api';
 import ToastProvider from './ui/Toast';
 import logoImg from './assets/logo.png';
+import { MessageSquare, ExternalLink } from 'lucide-react';
 
 const SECTION_TITLES = { main: '장부', tools: '도구', system: '시스템' };
 
@@ -62,7 +64,21 @@ export default function App() {
             </div>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* 피드백 및 건의사항 버튼 (꾹링크 커뮤니티 게시판 바로가기) */}
+          <button
+            type="button"
+            className="btn-feedback-sidebar"
+            onClick={() => api.system.openUrl('https://gguk.link/boards/kkomi_events')}
+            title="꼬미경조사 · 꾹링크 게시판으로 이동하여 의견이나 피드백을 남깁니다."
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <MessageSquare size={15} />
+              <span>피드백 및 건의사항</span>
+            </div>
+            <ExternalLink size={13} style={{ opacity: 0.65 }} />
+          </button>
+
           <div
             style={{
               padding: '12px 14px',

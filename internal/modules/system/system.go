@@ -5,6 +5,8 @@ package system
 import (
 	"database/sql"
 	"os"
+	"os/exec"
+	"runtime"
 	"time"
 
 	"kkomi-events/internal/core/db"
@@ -113,3 +115,18 @@ func (s *Service) Navigate(moduleID string) {
 		s.bus.Publish("system", "nav.goto", moduleID)
 	}
 }
+
+// OpenURL 은 기본 웹 브라우저로 지정된 외부 URL을 엽니다.
+func (s *Service) OpenURL(rawURL string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", rawURL)
+	case "darwin":
+		cmd = exec.Command("open", rawURL)
+	default:
+		cmd = exec.Command("xdg-open", rawURL)
+	}
+	return cmd.Start()
+}
+

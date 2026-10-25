@@ -1021,4 +1021,35 @@ textarea.input-text {
   }
 }
 
+/* ── 사이드바 피드백 버튼 스타일 ── */
+.btn-feedback-sidebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  background: hsl(200 100% 97%);
+  border: 1px solid hsl(200 85% 86%);
+  color: #0284c7;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s var(--ease);
+  width: 100%;
+  text-align: left;
+}
+
+.btn-feedback-sidebar:hover {
+  background: hsl(200 100% 93%);
+  border-color: hsl(200 85% 72%);
+  color: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.15);
+}
+
+.btn-feedback-sidebar:active {
+  transform: translateY(0);
+}
+
+
 
