@@ -4,8 +4,12 @@ package matching
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
+	"strings"
+	"time"
 
 	"kkomi-events/internal/core/db"
 	"kkomi-events/internal/core/eventbus"
@@ -60,6 +64,21 @@ func (m *Module) Migrations() []db.Migration { return nil }
 func (m *Module) Init(c *module.Context) error {
 	m.svc.db = c.DB
 	m.svc.bus = c.Bus
+
+	// 내 경조사 또는 타인 경조사에 전화번호가 등록/수정되면 동일 인물의 비어있는 전화번호를 상호 자동 동기화
+	c.Bus.Subscribe("sent.created", func(e eventbus.Event) {
+		m.svc.handleAutoSync(e.Payload)
+	})
+	c.Bus.Subscribe("sent.updated", func(e eventbus.Event) {
+		m.svc.handleAutoSync(e.Payload)
+	})
+	c.Bus.Subscribe("myevent.received_created", func(e eventbus.Event) {
+		m.svc.handleAutoSync(e.Payload)
+	})
+	c.Bus.Subscribe("myevent.received_updated", func(e eventbus.Event) {
+		m.svc.handleAutoSync(e.Payload)
+	})
+
 	return nil
 }
 
@@ -255,6 +274,14 @@ func (s *Service) GetPersonDetail(name string, phoneClean string) (*PersonDetail
 		}
 	}
 
+	// 주고받은 타임라인을 행사일자 최신순(EventDate DESC, ID DESC)으로 정렬
+	sort.Slice(detail.History, func(i, j int) bool {
+		if detail.History[i].EventDate != detail.History[j].EventDate {
+			return detail.History[i].EventDate > detail.History[j].EventDate
+		}
+		return detail.History[i].ID > detail.History[j].ID
+	})
+
 	detail.Summary.Balance = detail.Summary.ReceivedTotal - detail.Summary.SentTotal
 	if detail.Summary.Balance > 0 {
 		detail.Summary.Status = "need_pay"
@@ -299,6 +326,88 @@ func (s *Service) GetHintForName(name string, phoneClean string) (string, error)
 	}
 
 	return fmt.Sprintf("💡 %s 님은 %s '%s'에 %s원을 내셨습니다.", name, eventDate, eventTitle, formatNumber(amount)), nil
+}
+
+// FindPhoneByName 은 특정 지인 이름으로 등록된 기존 전화번호가 있는지
+// 나의 경조사(received) 및 타인의 경조사(sent) 전체에서 가장 최신 번호 1건을 찾아 돌려줍니다.
+func (s *Service) FindPhoneByName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	var phone string
+	err := s.db.QueryRow(`
+		SELECT phone FROM (
+			SELECT phone, updated_at FROM received WHERE name = ? AND phone != '' AND phone IS NOT NULL AND deleted_at IS NULL
+			UNION ALL
+			SELECT phone, updated_at FROM sent WHERE name = ? AND phone != '' AND phone IS NOT NULL AND deleted_at IS NULL
+		) ORDER BY updated_at DESC LIMIT 1`, name, name).Scan(&phone)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return phone, nil
+}
+
+// SyncPhoneForName 은 동일한 이름을 가진 모든 내역 중 전화번호가 비어있는 행들에
+// 전달받은 전화번호를 일괄 동기화하여 채워줍니다.
+func (s *Service) SyncPhoneForName(name string, phone string) (int, error) {
+	name = strings.TrimSpace(name)
+	phone = strings.TrimSpace(phone)
+	if name == "" || phone == "" {
+		return 0, nil
+	}
+	clean := cleanPhone(phone)
+	if clean == "" {
+		return 0, nil
+	}
+	now := time.Now().Format(time.RFC3339)
+
+	res1, err := s.db.Exec(`UPDATE received SET phone = ?, phone_clean = ?, updated_at = ?
+		WHERE name = ? AND (phone IS NULL OR phone = '') AND deleted_at IS NULL`, phone, clean, now, name)
+	if err != nil {
+		return 0, err
+	}
+	rows1, _ := res1.RowsAffected()
+
+	res2, err := s.db.Exec(`UPDATE sent SET phone = ?, phone_clean = ?, updated_at = ?
+		WHERE name = ? AND (phone IS NULL OR phone = '') AND deleted_at IS NULL`, phone, clean, now, name)
+	if err != nil {
+		return 0, err
+	}
+	rows2, _ := res2.RowsAffected()
+
+	total := int(rows1 + rows2)
+	if total > 0 && s.bus != nil {
+		s.bus.Publish("matching", "matching.phone_synced", map[string]any{
+			"name":        name,
+			"phone":       phone,
+			"syncedCount": total,
+		})
+	}
+	return total, nil
+}
+
+func (s *Service) handleAutoSync(payload any) {
+	if payload == nil {
+		return
+	}
+	var target struct {
+		Name  string `json:"name"`
+		Phone string `json:"phone"`
+	}
+
+	// JSON 직렬화 후 역직렬화하여 map/struct 모두 일관되게 추출
+	bytes, err := json.Marshal(payload)
+	if err == nil {
+		if err := json.Unmarshal(bytes, &target); err == nil {
+			if target.Name != "" && target.Phone != "" {
+				_, _ = s.SyncPhoneForName(target.Name, target.Phone)
+			}
+		}
+	}
 }
 
 func formatNumber(n int64) string {

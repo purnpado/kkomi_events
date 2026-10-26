@@ -183,15 +183,26 @@ export default function SentPage() {
     loadSent();
   });
 
-  // 상대방 이름 입력 시 내 경조사에 냈던 기록 자동 조회 (매칭 힌트!)
+  // 상대방 이름 입력 시 내 경조사 힌트 및 기존 등록된 연락처 자동 완성!
   const handleNameChange = async (newName) => {
     setForm((prev) => ({ ...prev, name: newName }));
-    if (newName.trim().length >= 2) {
+    const trimmed = newName.trim();
+    if (trimmed.length >= 2) {
       try {
-        const hint = await api.matching.getHintForName(newName.trim());
+        const hint = await api.matching.getHintForName(trimmed);
         setHintMessage(hint || '');
       } catch {
         setHintMessage('');
+      }
+
+      // 전화번호 입력란이 비어있다면, 기존에 등록된 연락처 자동 채우기
+      try {
+        const foundPhone = await api.matching.findPhoneByName(trimmed);
+        if (foundPhone) {
+          setForm((prev) => (!prev.phone ? { ...prev, phone: foundPhone } : prev));
+        }
+      } catch (err) {
+        // 무시
       }
     } else {
       setHintMessage('');

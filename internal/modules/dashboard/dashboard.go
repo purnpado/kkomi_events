@@ -212,5 +212,61 @@ func (s *Service) GetSummary() (*SummaryData, error) {
 		}
 	}
 
+	// 6. 최근 6개월 월별 수입 및 지출 집계
+	now := time.Now()
+	monthKeys := make([]string, 6)
+	monthlyMap := make(map[string]*MonthlyStat)
+
+	for i := 5; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0).Format("2006-01")
+		monthKeys[5-i] = m
+		monthlyMap[m] = &MonthlyStat{Month: m, ReceivedAmount: 0, SentAmount: 0}
+	}
+
+	startMonth := monthKeys[0] + "-01"
+
+	// 6-1. 받은 경조사비 (my_event 행사의 event_date 기준)
+	recRows, err := s.db.Query(`
+		SELECT strftime('%Y-%m', e.event_date) as ym, COALESCE(SUM(r.amount), 0)
+		FROM received r
+		JOIN my_event e ON r.my_event_id = e.id
+		WHERE e.event_date >= ? AND r.deleted_at IS NULL AND e.deleted_at IS NULL
+		GROUP BY ym`, startMonth)
+	if err == nil {
+		defer recRows.Close()
+		for recRows.Next() {
+			var ym string
+			var sum int64
+			if err := recRows.Scan(&ym, &sum); err == nil {
+				if stat, exists := monthlyMap[ym]; exists {
+					stat.ReceivedAmount = sum
+				}
+			}
+		}
+	}
+
+	// 6-2. 보낸 경조사비 (sent 의 event_date 기준, 단 미상 날짜 제외)
+	sentRows, err := s.db.Query(`
+		SELECT strftime('%Y-%m', s.event_date) as ym, COALESCE(SUM(s.amount), 0)
+		FROM sent s
+		WHERE s.event_date >= ? AND s.deleted_at IS NULL AND s.event_date NOT LIKE '%00-00'
+		GROUP BY ym`, startMonth)
+	if err == nil {
+		defer sentRows.Close()
+		for sentRows.Next() {
+			var ym string
+			var sum int64
+			if err := sentRows.Scan(&ym, &sum); err == nil {
+				if stat, exists := monthlyMap[ym]; exists {
+					stat.SentAmount = sum
+				}
+			}
+		}
+	}
+
+	for _, k := range monthKeys {
+		data.Monthly = append(data.Monthly, *monthlyMap[k])
+	}
+
 	return data, nil
 }

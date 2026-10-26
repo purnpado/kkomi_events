@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { formatMoney, formatNumber, numberToKorean } from '../../core/format';
+import { formatMoney, formatNumber, numberToKorean, formatDate } from '../../core/format';
 import { openGoogleCalendarAdd } from '../../core/calendarUtils';
+import MonthlyChart from './MonthlyChart';
 import { TrendingUp, TrendingDown, Scale, Calendar, Users, ArrowUpRight, ArrowDownLeft, Sparkles, Globe, RefreshCw, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -163,6 +164,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 최근 6개월 월별 경조사비 추이 (Canvas 막대 차트) */}
+      <MonthlyChart monthly={summary?.monthly} />
+
       <div className="grid grid-2">
         {/* 최근 경조사 활동 피드 (나의 경조사 받은 돈 + 타인 경조사 보낸 돈 통합) */}
         <div className="card">
@@ -226,7 +230,7 @@ export default function DashboardPage() {
                           <div style={{ fontSize: '0.82rem', color: 'var(--fg-muted)', marginTop: 2 }}>
                             <span>{item.eventTypeIcon} {item.eventTitle}</span>
                             <span style={{ margin: '0 6px' }}>·</span>
-                            <span>{item.eventDate}</span>
+                            <span>{formatDate(item.eventDate)}</span>
                             {item.attendance && (
                               <>
                                 <span style={{ margin: '0 6px' }}>·</span>

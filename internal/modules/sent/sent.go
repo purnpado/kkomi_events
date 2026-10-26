@@ -207,7 +207,7 @@ func (s *Service) Update(id int64, name, phone, relationship string, eventTypeId
 	if err != nil {
 		return fmt.Errorf("보낸 내역 수정 실패: %w", err)
 	}
-	s.bus.Publish("sent", EventUpdated, map[string]any{"id": id, "name": name, "amount": amount})
+	s.bus.Publish("sent", EventUpdated, map[string]any{"id": id, "name": name, "phone": phone, "amount": amount})
 	return nil
 }
 

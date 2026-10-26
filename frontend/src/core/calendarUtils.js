@@ -14,15 +14,17 @@ export function openGoogleCalendarAdd({ title, startDate, location = '', details
   const cleanStart = startDate.replace(/[^0-9]/g, '').slice(0, 8);
   if (cleanStart.length < 8) return;
 
+  const startYear = Number(cleanStart.slice(0, 4));
+  const startMonth = Number(cleanStart.slice(4, 6));
+  const startDay = Number(cleanStart.slice(6, 8));
+  if (startYear < 1900 || startMonth < 1 || startMonth > 12 || startDay < 1 || startDay > 31) {
+    return; // 유효하지 않거나 미상인 날짜는 구글 캘린더 등록 제외
+  }
+
   // 구글 캘린더 종일(All-day) 일정 표준 규칙: dates=시작일/종료익일
   let cleanEnd = cleanStart;
   try {
-    const parts = [
-      cleanStart.slice(0, 4),
-      cleanStart.slice(4, 6),
-      cleanStart.slice(6, 8),
-    ];
-    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const d = new Date(startYear, startMonth - 1, startDay);
     d.setDate(d.getDate() + 1);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -79,9 +81,16 @@ export function downloadEventsAsIcs(filename, events) {
     const cleanDate = ev.eventDate.replace(/[^0-9]/g, '').slice(0, 8);
     if (cleanDate.length < 8) return;
 
+    const evYear = Number(cleanDate.slice(0, 4));
+    const evMonth = Number(cleanDate.slice(4, 6));
+    const evDay = Number(cleanDate.slice(6, 8));
+    if (evYear < 1900 || evMonth < 1 || evMonth > 12 || evDay < 1 || evDay > 31) {
+      return; // 연도나 날짜가 미상인 항목은 캘린더(.ics) 내보내기에서 안전하게 제외
+    }
+
     let cleanEnd = cleanDate;
     try {
-      const d = new Date(Number(cleanDate.slice(0, 4)), Number(cleanDate.slice(4, 6)) - 1, Number(cleanDate.slice(6, 8)));
+      const d = new Date(evYear, evMonth - 1, evDay);
       d.setDate(d.getDate() + 1);
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');

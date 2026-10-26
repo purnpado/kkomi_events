@@ -486,6 +486,21 @@ export default function MyEventPage() {
     window.print();
   };
 
+  const handleReceivedNameChange = async (newName) => {
+    setReceivedForm((prev) => ({ ...prev, name: newName }));
+    const trimmed = newName.trim();
+    if (trimmed.length >= 2) {
+      try {
+        const foundPhone = await api.matching.findPhoneByName(trimmed);
+        if (foundPhone) {
+          setReceivedForm((prev) => (!prev.phone ? { ...prev, phone: foundPhone } : prev));
+        }
+      } catch (err) {
+        // 무시
+      }
+    }
+  };
+
   return (
     <div className="page-container">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -970,7 +985,7 @@ export default function MyEventPage() {
               className="input-text"
               placeholder="이름 입력"
               value={receivedForm.name}
-              onChange={(e) => setReceivedForm({ ...receivedForm, name: e.target.value })}
+              onChange={(e) => handleReceivedNameChange(e.target.value)}
               autoFocus
             />
           </div>

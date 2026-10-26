@@ -337,7 +337,7 @@ func (s *Service) UpdateReceived(id int64, name, phone, relationship string, amo
 	if err != nil {
 		return fmt.Errorf("축의·부의금 내역 수정 실패: %w", err)
 	}
-	s.bus.Publish("myevent", EventReceivedUpdated, map[string]any{"id": id, "name": name, "amount": amount})
+	s.bus.Publish("myevent", EventReceivedUpdated, map[string]any{"id": id, "name": name, "phone": phone, "amount": amount})
 	return nil
 }
 

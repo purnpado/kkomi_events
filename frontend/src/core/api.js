@@ -219,6 +219,8 @@ export async function call(path, ...args) {
       localStorage.setItem('kkomi_mock_autolock', String(autoLockMinutes));
       return true;
     }
+    case 'matching.Service.FindPhoneByName':
+      return '010-1234-5678';
     default:
       return null;
   }
@@ -272,6 +274,8 @@ export const api = {
     listSummaries: (filter = 'all', search = '') => call('matching.Service.ListSummaries', filter, search),
     getPersonDetail: (name, phoneClean = '') => call('matching.Service.GetPersonDetail', name, phoneClean),
     getHintForName: (name, phoneClean = '') => call('matching.Service.GetHintForName', name, phoneClean),
+    findPhoneByName: (name) => call('matching.Service.FindPhoneByName', name),
+    syncPhoneForName: (name, phone) => call('matching.Service.SyncPhoneForName', name, phone),
   },
   customfield: {
     listFields: (targetMenu) => call('customfield.Service.ListFields', targetMenu),
