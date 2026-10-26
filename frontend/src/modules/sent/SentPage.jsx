@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../../core/api';
 import { emit } from '../../core/eventBus';
 import { useBusEvent } from '../../core/hooks';
-import { formatMoney, formatPhone, formatDate } from '../../core/format';
+import { formatMoney, formatPhone, formatDate, getDateDisplayInfo } from '../../core/format';
 import Modal from '../../ui/Modal';
 import AmountInput from '../../ui/AmountInput';
 import Select from '../../ui/Select';
@@ -29,6 +29,9 @@ const PAYMENT_OPTIONS = [
   { value: '화환/선물', label: '화환/선물' },
   { value: '기타', label: '기타' },
 ];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 45 }, (_, i) => String(CURRENT_YEAR - i));
 
 export default function SentPage() {
   const [types, setTypes] = useState([]);
@@ -88,6 +91,10 @@ export default function SentPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [hintMessage, setHintMessage] = useState('');
+
+  // 날짜 정밀도 상태: 'exact'(정확한 날짜) | 'year'(연도만 기억남) | 'unknown'(연도/날짜 미상)
+  const [datePrecision, setDatePrecision] = useState('exact');
+  const [estimatedYear, setEstimatedYear] = useState(String(CURRENT_YEAR));
 
   // 폼 상태
   const [form, setForm] = useState({
@@ -191,8 +198,30 @@ export default function SentPage() {
     }
   };
 
+  const handlePrecisionChange = (mode) => {
+    setDatePrecision(mode);
+    if (mode === 'exact') {
+      const today = new Date().toISOString().split('T')[0];
+      setForm((prev) => ({
+        ...prev,
+        eventDate: !prev.eventDate || prev.eventDate.includes('00-00') ? today : prev.eventDate,
+      }));
+    } else if (mode === 'year') {
+      setForm((prev) => ({ ...prev, eventDate: `${estimatedYear}-00-00` }));
+    } else if (mode === 'unknown') {
+      setForm((prev) => ({ ...prev, eventDate: '0000-00-00' }));
+    }
+  };
+
+  const handleYearChange = (year) => {
+    setEstimatedYear(year);
+    setForm((prev) => ({ ...prev, eventDate: `${year}-00-00` }));
+  };
+
   const openCreate = () => {
     setHintMessage('');
+    setDatePrecision('exact');
+    setEstimatedYear(String(CURRENT_YEAR));
     setForm({
       id: null,
       name: '',
@@ -212,6 +241,18 @@ export default function SentPage() {
 
   const openEdit = async (item) => {
     setHintMessage('');
+    const rawDate = item.eventDate || '';
+    if (!rawDate || rawDate === '0000-00-00') {
+      setDatePrecision('unknown');
+      setEstimatedYear(String(CURRENT_YEAR));
+    } else if (rawDate.endsWith('-00-00')) {
+      setDatePrecision('year');
+      setEstimatedYear(rawDate.slice(0, 4));
+    } else {
+      setDatePrecision('exact');
+      setEstimatedYear(rawDate.slice(0, 4) || String(CURRENT_YEAR));
+    }
+
     setForm({
       id: item.id,
       name: item.name,
@@ -553,7 +594,48 @@ export default function SentPage() {
             ) : (
               sortedSentList.map((item) => (
                 <tr key={item.id}>
-                  <td style={{ color: 'var(--fg-muted)' }}>{formatDate(item.eventDate)}</td>
+                  <td>
+                    {(() => {
+                      const info = getDateDisplayInfo(item.eventDate);
+                      if (info.type === 'unknown') {
+                        return (
+                          <span
+                            className="badge"
+                            style={{
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--fg-muted)',
+                              borderColor: 'var(--border)',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              padding: '2px 8px',
+                            }}
+                            title="정확한 연도 및 날짜를 모르는 과거 지출 내역입니다."
+                          >
+                            시기 미상
+                          </span>
+                        );
+                      }
+                      if (info.type === 'year_only') {
+                        return (
+                          <span
+                            className="badge"
+                            style={{
+                              background: 'hsl(38 92% 95%)',
+                              color: 'hsl(38 92% 25%)',
+                              borderColor: 'hsl(38 92% 80%)',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              padding: '2px 8px',
+                            }}
+                            title={`${info.year}년경 (상세 날짜 미상)`}
+                          >
+                            {info.badge}
+                          </span>
+                        );
+                      }
+                      return <span style={{ color: 'var(--fg-muted)' }}>{formatDate(item.eventDate)}</span>;
+                    })()}
+                  </td>
                   <td style={{ fontWeight: 700 }}>{item.name}</td>
                   <td className="mono">{formatPhone(item.phone)}</td>
                   <td><span className="badge">{item.relationship}</span></td>
@@ -587,21 +669,23 @@ export default function SentPage() {
                   <td className="cell-wrap" style={{ color: 'var(--fg-muted)', fontSize: '0.85rem' }}>{item.notes || '-'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
-                      <button
-                        type="button"
-                        className="btn-chip"
-                        style={{ color: '#0369a1', background: '#f0f9ff', borderColor: '#bae6fd' }}
-                        onClick={() => {
-                          openGoogleCalendarAdd({
-                            title: `[${item.eventTypeIcon || '경조사'}] ${item.name} (${item.relationship || ''})`.trim(),
-                            startDate: item.eventDate,
-                            details: `경조사 종류: ${item.eventTypeName}\n금액: ${formatMoney(item.amount)}\n비고: ${item.notes || '-'}`,
-                          });
-                        }}
-                        title="이 일정을 구글 캘린더 웹에 등록합니다."
-                      >
-                        <Calendar size={13} />
-                      </button>
+                      {getDateDisplayInfo(item.eventDate).isExact && (
+                        <button
+                          type="button"
+                          className="btn-chip"
+                          style={{ color: '#0369a1', background: '#f0f9ff', borderColor: '#bae6fd' }}
+                          onClick={() => {
+                            openGoogleCalendarAdd({
+                              title: `[${item.eventTypeIcon || '경조사'}] ${item.name} (${item.relationship || ''})`.trim(),
+                              startDate: item.eventDate,
+                              details: `경조사 종류: ${item.eventTypeName}\n금액: ${formatMoney(item.amount)}\n비고: ${item.notes || '-'}`,
+                            });
+                          }}
+                          title="이 일정을 구글 캘린더 웹에 등록합니다."
+                        >
+                          <Calendar size={13} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn-chip"
@@ -689,7 +773,7 @@ export default function SentPage() {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
           <div className="form-group">
             <label className="form-label">경조사 종류 *</label>
             <select
@@ -705,13 +789,121 @@ export default function SentPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">경조사 날짜 *</label>
-            <input
-              type="date"
-              className="input-text"
-              value={form.eventDate}
-              onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>경조사 날짜 *</label>
+            </div>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              <button
+                type="button"
+                onClick={() => handlePrecisionChange('exact')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (datePrecision === 'exact' ? 'var(--primary)' : 'var(--border)'),
+                  background: datePrecision === 'exact' ? 'hsl(212 90% 96%)' : 'var(--bg-subtle)',
+                  color: datePrecision === 'exact' ? 'var(--primary)' : 'var(--fg-muted)',
+                  fontWeight: datePrecision === 'exact' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                정확한 날짜
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrecisionChange('year')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (datePrecision === 'year' ? '#d97706' : 'var(--border)'),
+                  background: datePrecision === 'year' ? '#fef3c7' : 'var(--bg-subtle)',
+                  color: datePrecision === 'year' ? '#92400e' : 'var(--fg-muted)',
+                  fontWeight: datePrecision === 'year' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                연도만
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrecisionChange('unknown')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (datePrecision === 'unknown' ? '#64748b' : 'var(--border)'),
+                  background: datePrecision === 'unknown' ? '#f1f5f9' : 'var(--bg-subtle)',
+                  color: datePrecision === 'unknown' ? '#1e293b' : 'var(--fg-muted)',
+                  fontWeight: datePrecision === 'unknown' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                시기 미상
+              </button>
+            </div>
+
+            {datePrecision === 'exact' && (
+              <input
+                type="date"
+                className="input-text"
+                value={form.eventDate}
+                onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
+              />
+            )}
+
+            {datePrecision === 'year' && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <select
+                  className="input-text"
+                  value={estimatedYear}
+                  onChange={(e) => handleYearChange(e.target.value)}
+                  style={{ fontWeight: 600 }}
+                >
+                  {YEAR_OPTIONS.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}년경
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+                  (날짜 미상)
+                </span>
+              </div>
+            )}
+
+            {datePrecision === 'unknown' && (
+              <div
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-subtle)',
+                  border: '1px dashed var(--border)',
+                  fontSize: '0.78rem',
+                  color: 'var(--fg-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>🗓️</span>
+                <span>
+                  <strong>연도 및 날짜 미상:</strong> 과거 지출로 안전하게 저장되며 1:1 대조에 정상 반영됩니다.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -873,15 +1065,17 @@ export default function SentPage() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ color: '#0284c7', borderColor: '#bae6fd', background: '#f0f9ff' }}
-            onClick={handleSaveAndOpenGoogle}
-            title="장부에 저장함과 동시에 구글 캘린더 새 일정 웹페이지를 즉시 엽니다."
-          >
-            <Calendar size={15} /> 저장하고 구글 캘린더에 등록
-          </button>
+          {datePrecision === 'exact' ? (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ color: '#0284c7', borderColor: '#bae6fd', background: '#f0f9ff' }}
+              onClick={handleSaveAndOpenGoogle}
+              title="장부에 저장함과 동시에 구글 캘린더 새 일정 웹페이지를 즉시 엽니다."
+            >
+              <Calendar size={15} /> 저장하고 구글 캘린더에 등록
+            </button>
+          ) : <div />}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
               취소

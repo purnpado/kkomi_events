@@ -73,9 +73,16 @@ export function formatMoneyWithKorean(val) {
   return moneyStr;
 }
 
-// 날짜를 YYYY-MM-DD 형태로 포맷
+// 날짜를 YYYY-MM-DD 형태로 포맷 (연도 추정 및 시기 미상 대응)
 export function formatDate(dateStr) {
   if (!dateStr) return '-';
+  if (dateStr === '0000-00-00' || dateStr === 'unknown') {
+    return '시기 미상 (과거)';
+  }
+  if (dateStr.endsWith('-00-00') || dateStr.endsWith('-00')) {
+    const year = dateStr.slice(0, 4);
+    return `${year}년경 (날짜 미상)`;
+  }
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
@@ -87,3 +94,16 @@ export function formatDate(dateStr) {
     return dateStr;
   }
 }
+
+// 테이블 및 카드 뷰에서 날짜 뱃지 표기를 위한 상세 정보 반환
+export function getDateDisplayInfo(dateStr) {
+  if (!dateStr || dateStr === '0000-00-00' || dateStr === 'unknown') {
+    return { type: 'unknown', text: '시기 미상', subText: '과거 지출', isExact: false };
+  }
+  if (dateStr.endsWith('-00-00') || dateStr.endsWith('-00')) {
+    const year = dateStr.slice(0, 4);
+    return { type: 'year_only', text: `${year}년경`, subText: '날짜 미상', isExact: false, year };
+  }
+  return { type: 'exact', text: formatDate(dateStr), subText: '', isExact: true };
+}
+
