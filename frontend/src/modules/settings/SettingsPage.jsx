@@ -120,11 +120,10 @@ export default function SettingsPage() {
       const info = await api.updater.checkUpdate();
       if (info && info.hasUpdate) {
         emit('updater.showModal', info);
-      } else if (info) {
-        emit('updater.showModal', info);
+      } else {
         emit('toast.show', {
-          title: '최신 버전 확인 완료',
-          message: `현재 최신 버전(v${info.currentVersion})을 이용 중입니다. (GitHub 배포 버전: ${info.latestVersion})`,
+          title: '최신 버전 사용 중',
+          message: `현재 최신 버전(v${info?.currentVersion || '0.1.2'})을 사용하고 계십니다.`,
           type: 'success',
         });
       }

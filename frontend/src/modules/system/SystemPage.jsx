@@ -42,11 +42,10 @@ export default function SystemPage() {
       const uInfo = await api.updater.checkUpdate();
       if (uInfo && uInfo.hasUpdate) {
         emit('updater.showModal', uInfo);
-      } else if (uInfo) {
-        emit('updater.showModal', uInfo);
+      } else {
         emit('toast.show', {
-          title: '최신 버전 확인 완료',
-          message: `현재 최신 버전(v${uInfo.currentVersion})을 이용 중입니다. (GitHub 배포 버전: ${uInfo.latestVersion})`,
+          title: '최신 버전 사용 중',
+          message: `현재 최신 버전(v${uInfo?.currentVersion || info?.version || '0.1.2'})을 사용하고 계십니다.`,
           type: 'success',
         });
       }
