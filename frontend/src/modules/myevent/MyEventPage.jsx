@@ -11,7 +11,17 @@ import EventTypeModal from './EventTypeModal';
 import CustomFieldModal from '../../ui/CustomFieldModal';
 import TrashModal from '../../ui/TrashModal';
 import { openGoogleCalendarAdd } from '../../core/calendarUtils';
-import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Search, Settings, Calendar, MapPin, CheckCircle, Trash2, Edit2, UserPlus, Sparkles, SlidersHorizontal, FileSpreadsheet, Upload, Printer, Download, ArrowUpDown, ArrowUp, ArrowDown, Send } from 'lucide-react';
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 45 }, (_, i) => String(CURRENT_YEAR - i));
+const SENT_PAYMENT_OPTIONS = [
+  { value: '계좌이체', label: '계좌이체' },
+  { value: '현금/봉투', label: '현금/봉투' },
+  { value: '카카오페이/토스', label: '카카오페이/토스' },
+  { value: '화환/선물', label: '화환/선물' },
+  { value: '기타', label: '기타' },
+];
 
 const RELATION_OPTIONS = [
   { value: '친구', label: '친구' },
@@ -127,6 +137,24 @@ export default function MyEventPage() {
     memberSide: '본인',
     notes: '',
     customValues: {},
+  });
+
+  // 해당 손님에게 보낸 경조사비 바로 등록 모달 상태
+  const [directSentOpen, setDirectSentOpen] = useState(false);
+  const [directSentOrigin, setDirectSentOrigin] = useState(null);
+  const [directSentDatePrecision, setDirectSentDatePrecision] = useState('exact');
+  const [directSentYear, setDirectSentYear] = useState(String(CURRENT_YEAR));
+  const [directSentForm, setDirectSentForm] = useState({
+    name: '',
+    phone: '',
+    relationship: '친구',
+    eventTypeId: 1,
+    eventDate: new Date().toISOString().split('T')[0],
+    amount: 50000,
+    paymentMethod: '계좌이체',
+    attended: true,
+    memberSide: '본인',
+    notes: '',
   });
 
   // 1. 탭 목록 불러오기
@@ -420,6 +448,77 @@ export default function MyEventPage() {
       loadReceived();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // ── 해당 손님에게 보낸 경조사비 바로 등록 ──
+  const handleDirectSentPrecisionChange = (mode) => {
+    setDirectSentDatePrecision(mode);
+    if (mode === 'exact') {
+      const today = new Date().toISOString().split('T')[0];
+      setDirectSentForm((prev) => ({
+        ...prev,
+        eventDate: !prev.eventDate || prev.eventDate.includes('00-00') ? today : prev.eventDate,
+      }));
+    } else if (mode === 'year') {
+      setDirectSentForm((prev) => ({ ...prev, eventDate: `${directSentYear}-00-00` }));
+    } else if (mode === 'unknown') {
+      setDirectSentForm((prev) => ({ ...prev, eventDate: '0000-00-00' }));
+    }
+  };
+
+  const handleDirectSentYearChange = (year) => {
+    setDirectSentYear(year);
+    setDirectSentForm((prev) => ({ ...prev, eventDate: `${year}-00-00` }));
+  };
+
+  const openDirectSent = (item) => {
+    setDirectSentOrigin(item);
+    setDirectSentDatePrecision('exact');
+    setDirectSentYear(String(CURRENT_YEAR));
+    setDirectSentForm({
+      name: item.name,
+      phone: item.phone || '',
+      relationship: item.relationship || '친구',
+      eventTypeId: types[0]?.id || 1,
+      eventDate: new Date().toISOString().split('T')[0],
+      amount: item.amount || 50000, // 상대방이 냈던 금액을 기본 추천 금액으로 세팅!
+      paymentMethod: '계좌이체',
+      attended: true,
+      memberSide: item.memberSide || '본인',
+      notes: item.notes ? `[${activeEvent?.title || '나의 행사'}] ${item.notes}` : `[${activeEvent?.title || '나의 행사'} 참석 손님]`,
+    });
+    setDirectSentOpen(true);
+  };
+
+  const handleSaveDirectSent = async () => {
+    if (!directSentForm.name.trim()) {
+      emit('toast.show', { title: '입력 필요', message: '상대방 이름을 확인해주세요.', type: 'error' });
+      return;
+    }
+    try {
+      await api.sent.create(
+        directSentForm.name.trim(),
+        directSentForm.phone,
+        directSentForm.relationship,
+        directSentForm.eventTypeId,
+        directSentForm.eventDate,
+        directSentForm.amount,
+        directSentForm.paymentMethod,
+        directSentForm.attended,
+        directSentForm.memberSide,
+        directSentForm.notes
+      );
+      emit('toast.show', {
+        title: '보낸 내역 등록 완료',
+        message: `${directSentForm.name} 님에게 보낸 경조사비가 '타인 경조사'에 성공적으로 등록되었습니다.`,
+        type: 'success',
+      });
+      setDirectSentOpen(false);
+      // 백엔드 이벤트 버스를 통해 전화번호 자동 동기화 및 1:1 대조 자동 갱신
+      loadReceived();
+    } catch (err) {
+      emit('toast.show', { title: '저장 실패', message: String(err), type: 'error' });
     }
   };
 
@@ -847,6 +946,22 @@ export default function MyEventPage() {
                           <button
                             type="button"
                             className="btn-chip"
+                            style={{
+                              color: '#e11d48',
+                              background: '#fff1f2',
+                              borderColor: '#fecdd3',
+                              fontWeight: 600,
+                              fontSize: '0.74rem',
+                              padding: '2px 7px',
+                            }}
+                            onClick={() => openDirectSent(item)}
+                            title={`${item.name} 님에게 보낸 경조사비를 타인 경조사에 바로 기록합니다.`}
+                          >
+                            <Send size={12} /> 보낸돈
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-chip"
                             onClick={() => openEditReceived(item)}
                             title="수정"
                           >
@@ -1173,6 +1288,258 @@ export default function MyEventPage() {
           </button>
           <button type="button" className="btn" onClick={handleSaveReceived}>
             저장
+          </button>
+        </div>
+      </Modal>
+
+      {/* 손님에게 보낸 경조사비 바로 등록 모달 */}
+      <Modal
+        open={directSentOpen}
+        onOpenChange={setDirectSentOpen}
+        title="보낸 경조사비 바로 등록"
+        description="내 행사에 오신 손님에게 보낸 경조사비를 '타인 경조사'에 즉시 기록합니다."
+      >
+        {/* 안내 배너 박스 */}
+        <div
+          style={{
+            background: 'hsl(340 100% 97%)',
+            border: '1px solid hsl(340 82% 88%)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#9f1239',
+            fontSize: '0.86rem',
+            fontWeight: 600,
+          }}
+        >
+          <Sparkles size={16} style={{ color: '#e11d48', flexShrink: 0 }} />
+          <span>
+            <strong>{directSentForm.name}</strong> 님에게 보낸 경조사비를 [타인 경조사]에 바로 등록합니다.
+            {directSentOrigin?.amount > 0 && (
+              <span style={{ color: '#be123c', marginLeft: 4 }}>
+                (내 행사에 {directSentOrigin.amount.toLocaleString()}원을 내주신 손님)
+              </span>
+            )}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label className="form-label">상대방 이름 *</label>
+            <input
+              type="text"
+              className="input-text"
+              value={directSentForm.name}
+              onChange={(e) => setDirectSentForm({ ...directSentForm, name: e.target.value })}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">전화번호</label>
+            <input
+              type="text"
+              className="input-text"
+              placeholder="010-0000-0000"
+              value={directSentForm.phone}
+              onChange={(e) => setDirectSentForm({ ...directSentForm, phone: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {/* 금액 전용 입력기 */}
+        <div className="form-group">
+          <label className="form-label">보낸 금액 *</label>
+          <AmountInput
+            value={directSentForm.amount}
+            onChange={(val) => setDirectSentForm({ ...directSentForm, amount: val })}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
+          <div className="form-group">
+            <label className="form-label">경조사 종류 *</label>
+            <select
+              className="input-text"
+              value={directSentForm.eventTypeId}
+              onChange={(e) => setDirectSentForm({ ...directSentForm, eventTypeId: Number(e.target.value) })}
+            >
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.icon} {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>경조사 날짜 *</label>
+            </div>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              <button
+                type="button"
+                onClick={() => handleDirectSentPrecisionChange('exact')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (directSentDatePrecision === 'exact' ? 'var(--primary)' : 'var(--border)'),
+                  background: directSentDatePrecision === 'exact' ? 'hsl(212 90% 96%)' : 'var(--bg-subtle)',
+                  color: directSentDatePrecision === 'exact' ? 'var(--primary)' : 'var(--fg-muted)',
+                  fontWeight: directSentDatePrecision === 'exact' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                정확한 날짜
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDirectSentPrecisionChange('year')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (directSentDatePrecision === 'year' ? '#d97706' : 'var(--border)'),
+                  background: directSentDatePrecision === 'year' ? '#fef3c7' : 'var(--bg-subtle)',
+                  color: directSentDatePrecision === 'year' ? '#92400e' : 'var(--fg-muted)',
+                  fontWeight: directSentDatePrecision === 'year' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                연도만
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDirectSentPrecisionChange('unknown')}
+                style={{
+                  flex: 1,
+                  border: '1px solid ' + (directSentDatePrecision === 'unknown' ? '#64748b' : 'var(--border)'),
+                  background: directSentDatePrecision === 'unknown' ? '#f1f5f9' : 'var(--bg-subtle)',
+                  color: directSentDatePrecision === 'unknown' ? '#1e293b' : 'var(--fg-muted)',
+                  fontWeight: directSentDatePrecision === 'unknown' ? 700 : 500,
+                  fontSize: '0.78rem',
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                시기 미상
+              </button>
+            </div>
+
+            {directSentDatePrecision === 'exact' && (
+              <input
+                type="date"
+                className="input-text"
+                value={directSentForm.eventDate}
+                onChange={(e) => setDirectSentForm({ ...directSentForm, eventDate: e.target.value })}
+              />
+            )}
+
+            {directSentDatePrecision === 'year' && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <select
+                  className="input-text"
+                  value={directSentYear}
+                  onChange={(e) => handleDirectSentYearChange(e.target.value)}
+                  style={{ fontWeight: 600 }}
+                >
+                  {YEAR_OPTIONS.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}년경
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+                  (날짜 미상)
+                </span>
+              </div>
+            )}
+
+            {directSentDatePrecision === 'unknown' && (
+              <div
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-subtle)',
+                  border: '1px dashed var(--border)',
+                  fontSize: '0.78rem',
+                  color: 'var(--fg-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>🗓️</span>
+                <span>
+                  <strong>연도 및 날짜 미상:</strong> 과거 지출로 안전하게 저장되며 1:1 대조에 정상 반영됩니다.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label className="form-label">관계</label>
+            <Select
+              value={directSentForm.relationship}
+              onValueChange={(val) => setDirectSentForm({ ...directSentForm, relationship: val })}
+              options={RELATION_OPTIONS}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">지출 수단</label>
+            <Select
+              value={directSentForm.paymentMethod}
+              onValueChange={(val) => setDirectSentForm({ ...directSentForm, paymentMethod: val })}
+              options={SENT_PAYMENT_OPTIONS}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={directSentForm.attended}
+              onChange={(e) => setDirectSentForm({ ...directSentForm, attended: e.target.checked })}
+              style={{ width: 18, height: 18 }}
+            />
+            <span>직접 참석함 (체크 해제 시 송금/위탁 전달)</span>
+          </label>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">비고 (메모)</label>
+          <input
+            type="text"
+            className="input-text"
+            placeholder="장소, 봉투 전달자, 특이사항 등"
+            value={directSentForm.notes}
+            onChange={(e) => setDirectSentForm({ ...directSentForm, notes: e.target.value })}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button type="button" className="btn btn-ghost" onClick={() => setDirectSentOpen(false)}>
+            취소
+          </button>
+          <button type="button" className="btn" style={{ background: '#e11d48' }} onClick={handleSaveDirectSent}>
+            <Send size={15} /> 타인 경조사에 바로 등록
           </button>
         </div>
       </Modal>
