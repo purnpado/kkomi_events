@@ -5,7 +5,7 @@ import { formatMoney, formatPhone, formatDate } from '../../core/format';
 import { Search, ArrowLeftRight, Printer, ArrowUpDown, ArrowUp, ArrowDown, User, Scale, ArrowRight, X, Calendar, Sparkles } from 'lucide-react';
 
 export default function MatchingPage() {
-  const [summaries, setSummaries] = useState([]);
+  const [allSummaries, setAllSummaries] = useState([]);
   const [filter, setFilter] = useState('all'); // all, need_pay, receive_back, balanced
   const [search, setSearch] = useState('');
 
@@ -19,12 +19,13 @@ export default function MatchingPage() {
 
   const loadSummaries = useCallback(async () => {
     try {
-      const list = await api.matching.listSummaries(filter, search);
-      setSummaries(list || []);
+      // 전체 목록을 한 번에 조회하여 빠른보기 카운트가 변조되지 않도록 유지
+      const list = await api.matching.listSummaries('all', search);
+      setAllSummaries(list || []);
     } catch (err) {
       console.error(err);
     }
-  }, [filter, search]);
+  }, [search]);
 
   useEffect(() => {
     loadSummaries();
@@ -39,11 +40,11 @@ export default function MatchingPage() {
     if (!search.trim()) {
       return;
     }
-    const matched = summaries.filter((s) => s.name.toLowerCase().includes(search.trim().toLowerCase()));
+    const matched = allSummaries.filter((s) => s.name.toLowerCase().includes(search.trim().toLowerCase()));
     if (matched.length === 1) {
       loadPersonDetail(matched[0]);
     }
-  }, [search, summaries]);
+  }, [search, allSummaries]);
 
   const loadPersonDetail = async (p) => {
     setActivePerson(p);
@@ -87,9 +88,24 @@ export default function MatchingPage() {
     );
   };
 
+  // 1. 빠른 보기 상단 칩 인원수 (어떤 필터를 누르더라도 항상 정확한 전체 기준 유지)
+  const totalCount = allSummaries.length;
+  const needPayCount = allSummaries.filter((s) => s.balance > 0).length;
+  const receiveBackCount = allSummaries.filter((s) => s.balance < 0).length;
+  const balancedCount = allSummaries.filter((s) => s.balance === 0).length;
+
+  // 2. 선택된 필터에 따른 목록 추출
+  const filteredSummaries = useMemo(() => {
+    if (filter === 'need_pay') return allSummaries.filter((s) => s.balance > 0);
+    if (filter === 'receive_back') return allSummaries.filter((s) => s.balance < 0);
+    if (filter === 'balanced') return allSummaries.filter((s) => s.balance === 0);
+    return allSummaries;
+  }, [allSummaries, filter]);
+
+  // 3. 정렬 적용
   const sortedSummaries = useMemo(() => {
-    if (!summaries || summaries.length === 0) return [];
-    return [...summaries].sort((a, b) => {
+    if (!filteredSummaries || filteredSummaries.length === 0) return [];
+    return [...filteredSummaries].sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
       if (aVal === undefined || aVal === null) aVal = '';
@@ -104,12 +120,7 @@ export default function MatchingPage() {
       }
       return 0;
     });
-  }, [summaries, sortConfig]);
-
-  // 통계 계산
-  const needPayCount = summaries.filter((s) => s.balance > 0).length;
-  const receiveBackCount = summaries.filter((s) => s.balance < 0).length;
-  const balancedCount = summaries.filter((s) => s.balance === 0).length;
+  }, [filteredSummaries, sortConfig]);
 
   return (
     <div className="page-container">
@@ -182,7 +193,7 @@ export default function MatchingPage() {
           </div>
           {search && (
             <div style={{ fontSize: '0.88rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
-              검색 결과: <strong>{summaries.length}</strong>명
+              검색 결과: <strong>{filteredSummaries.length}</strong>명
             </div>
           )}
         </div>
@@ -196,7 +207,7 @@ export default function MatchingPage() {
             onClick={() => setFilter('all')}
             style={{ fontSize: '0.82rem', padding: '3px 10px' }}
           >
-            전체 ({summaries.length}명)
+            전체 ({totalCount}명)
           </button>
           <button
             type="button"
@@ -474,20 +485,20 @@ export default function MatchingPage() {
                     <td className="mono">{formatPhone(p.phone)}</td>
                     <td><span className="badge">{p.relationship || '지인'}</span></td>
                     <td style={{ textAlign: 'right' }}>
-                      {p.receivedCount > 0 ? (
+                      {(p.receivedCount > 0 || p.receivedTotal > 0) ? (
                         <div>
                           <strong style={{ color: 'var(--income)' }}>{formatMoney(p.receivedTotal)}</strong>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>({p.receivedCount}회)</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>({p.receivedCount || 1}회)</div>
                         </div>
                       ) : (
                         <span className="stat-label">없음</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      {p.sentCount > 0 ? (
+                      {(p.sentCount > 0 || p.sentTotal > 0) ? (
                         <div>
                           <strong style={{ color: 'var(--expense)' }}>{formatMoney(p.sentTotal)}</strong>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>({p.sentCount}회)</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--fg-muted)' }}>({p.sentCount || 1}회)</div>
                         </div>
                       ) : (
                         <span className="stat-label">없음</span>

@@ -99,25 +99,57 @@ func cleanPhone(p string) string {
 // filter: "all"(전체), "need_pay"(갚을 차례), "receive_back"(받을 차례), "balanced"(균형)
 func (s *Service) ListSummaries(filter string, search string) ([]PersonSummary, error) {
 	// 1. 받은 내역(received) 집계
-	queryReceived := `SELECT r.name, r.phone, r.phone_clean, r.relationship, COUNT(*), SUM(r.amount)
+	queryReceived := `SELECT TRIM(r.name), r.phone, r.phone_clean, r.relationship, COUNT(*), SUM(r.amount)
 		FROM received r
 		WHERE r.deleted_at IS NULL
-		GROUP BY r.name, r.phone_clean`
+		GROUP BY TRIM(r.name), r.phone_clean`
 
 	// 2. 보낸 내역(sent) 집계
-	querySent := `SELECT s.name, s.phone, s.phone_clean, s.relationship, COUNT(*), SUM(s.amount)
+	querySent := `SELECT TRIM(s.name), s.phone, s.phone_clean, s.relationship, COUNT(*), SUM(s.amount)
 		FROM sent s
 		WHERE s.deleted_at IS NULL
-		GROUP BY s.name, s.phone_clean`
+		GROUP BY TRIM(s.name), s.phone_clean`
 
-	personMap := make(map[string]*PersonSummary)
+	var list []*PersonSummary
 
-	// key 생성 헬퍼: 전화번호가 있으면 "이름_번호", 없으면 "이름"
-	makeKey := func(name, clean string) string {
-		if clean != "" {
-			return name + "_" + clean
+	// 지능적 인물 매칭 헬퍼:
+	// 동일 이름이 이미 있고, 둘 중 한쪽의 전화번호가 비어있거나 번호가 동일하면 같은 사람으로 합침
+	findOrCreatePerson := func(name, phone, clean, rel string) *PersonSummary {
+		name = strings.TrimSpace(name)
+		clean = cleanPhone(clean)
+
+		for _, p := range list {
+			if strings.EqualFold(p.Name, name) {
+				// 1) 둘 다 번호가 있고 번호가 일치하는 경우 -> 동일인
+				if p.PhoneClean != "" && clean != "" && p.PhoneClean == clean {
+					if p.Relationship == "" && rel != "" {
+						p.Relationship = rel
+					}
+					return p
+				}
+				// 2) 한쪽이라도 번호가 비어있는 경우 -> 동일인으로 지능적 병합
+				if p.PhoneClean == "" || clean == "" {
+					if p.Phone == "" && phone != "" {
+						p.Phone = phone
+						p.PhoneClean = clean
+					}
+					if p.Relationship == "" && rel != "" {
+						p.Relationship = rel
+					}
+					return p
+				}
+			}
 		}
-		return name
+
+		// 새 인물 생성
+		newP := &PersonSummary{
+			Name:         name,
+			Phone:        phone,
+			PhoneClean:   clean,
+			Relationship: rel,
+		}
+		list = append(list, newP)
+		return newP
 	}
 
 	// 받은 내역 합산
@@ -129,15 +161,9 @@ func (s *Service) ListSummaries(filter string, search string) ([]PersonSummary, 
 			var count int
 			var total int64
 			if err := rRows.Scan(&name, &phone, &clean, &rel, &count, &total); err == nil {
-				key := makeKey(name, clean)
-				personMap[key] = &PersonSummary{
-					Name:          name,
-					Phone:         phone,
-					PhoneClean:    clean,
-					Relationship:  rel,
-					ReceivedCount: count,
-					ReceivedTotal: total,
-				}
+				p := findOrCreatePerson(name, phone, clean, rel)
+				p.ReceivedCount += count
+				p.ReceivedTotal += total
 			}
 		}
 	}
@@ -151,19 +177,9 @@ func (s *Service) ListSummaries(filter string, search string) ([]PersonSummary, 
 			var count int
 			var total int64
 			if err := sRows.Scan(&name, &phone, &clean, &rel, &count, &total); err == nil {
-				key := makeKey(name, clean)
-				p, exists := personMap[key]
-				if !exists {
-					p = &PersonSummary{
-						Name:         name,
-						Phone:        phone,
-						PhoneClean:   clean,
-						Relationship: rel,
-					}
-					personMap[key] = p
-				}
-				p.SentCount = count
-				p.SentTotal = total
+				p := findOrCreatePerson(name, phone, clean, rel)
+				p.SentCount += count
+				p.SentTotal += total
 				if p.Phone == "" && phone != "" {
 					p.Phone = phone
 					p.PhoneClean = clean
@@ -173,7 +189,9 @@ func (s *Service) ListSummaries(filter string, search string) ([]PersonSummary, 
 	}
 
 	var results []PersonSummary
-	for _, p := range personMap {
+	searchLower := strings.ToLower(strings.TrimSpace(search))
+
+	for _, p := range list {
 		p.Balance = p.ReceivedTotal - p.SentTotal
 
 		if p.Balance > 0 {
@@ -199,8 +217,11 @@ func (s *Service) ListSummaries(filter string, search string) ([]PersonSummary, 
 		}
 
 		// 검색어 체크
-		if search != "" {
-			if !contains(p.Name, search) && !contains(p.Phone, search) && !contains(p.Relationship, search) {
+		if searchLower != "" {
+			nameMatch := strings.Contains(strings.ToLower(p.Name), searchLower)
+			phoneMatch := strings.Contains(strings.ToLower(p.Phone), searchLower) || strings.Contains(p.PhoneClean, searchLower)
+			relMatch := strings.Contains(strings.ToLower(p.Relationship), searchLower)
+			if !nameMatch && !phoneMatch && !relMatch {
 				continue
 			}
 		}
@@ -217,6 +238,9 @@ func contains(src, pattern string) bool {
 
 // GetPersonDetail 은 특정 인물과의 모든 주고받은 내역을 시간순으로 정렬하여 반환합니다.
 func (s *Service) GetPersonDetail(name string, phoneClean string) (*PersonDetail, error) {
+	name = strings.TrimSpace(name)
+	phoneClean = cleanPhone(phoneClean)
+
 	detail := &PersonDetail{
 		Summary: PersonSummary{Name: name, PhoneClean: phoneClean},
 		History: []HistoryItem{},
@@ -226,11 +250,11 @@ func (s *Service) GetPersonDetail(name string, phoneClean string) (*PersonDetail
 	qRec := `SELECT r.id, e.title, e.event_date, r.amount, r.payment_method, r.notes
 		FROM received r
 		JOIN my_event e ON r.my_event_id = e.id
-		WHERE r.name = ? AND r.deleted_at IS NULL`
+		WHERE TRIM(r.name) = ? AND r.deleted_at IS NULL`
 	var argsRec []any
 	argsRec = append(argsRec, name)
 	if phoneClean != "" {
-		qRec += ` AND r.phone_clean = ?`
+		qRec += ` AND (r.phone_clean = ? OR r.phone_clean = '' OR r.phone_clean IS NULL)`
 		argsRec = append(argsRec, phoneClean)
 	}
 
@@ -252,11 +276,11 @@ func (s *Service) GetPersonDetail(name string, phoneClean string) (*PersonDetail
 	qSent := `SELECT s.id, t.name, s.event_date, s.amount, s.payment_method, s.notes
 		FROM sent s
 		JOIN event_type t ON s.event_type_id = t.id
-		WHERE s.name = ? AND s.deleted_at IS NULL`
+		WHERE TRIM(s.name) = ? AND s.deleted_at IS NULL`
 	var argsSent []any
 	argsSent = append(argsSent, name)
 	if phoneClean != "" {
-		qSent += ` AND s.phone_clean = ?`
+		qSent += ` AND (s.phone_clean = ? OR s.phone_clean = '' OR s.phone_clean IS NULL)`
 		argsSent = append(argsSent, phoneClean)
 	}
 

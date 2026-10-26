@@ -121,7 +121,7 @@ export const mockData = {
       phoneClean: '01033445566',
       receivedTotal: 150000,
       sentTotal: 100000,
-      balance: -50000, // 내가 5만원 더 받음 (갚을 차례)
+      balance: 50000, // 내가 5만원 더 받음 (갚을 차례 need_pay)
       status: 'need_pay',
       lastExchangeDate: '2026-05-16',
       exchangeCount: 2,
@@ -132,7 +132,7 @@ export const mockData = {
       phoneClean: '01099887766',
       receivedTotal: 100000,
       sentTotal: 0,
-      balance: -100000,
+      balance: 100000, // 내가 10만원 더 받음 (갚을 차례 need_pay)
       status: 'need_pay',
       lastExchangeDate: '2026-05-16',
       exchangeCount: 1,
@@ -143,7 +143,7 @@ export const mockData = {
       phoneClean: '01055667788',
       receivedTotal: 0,
       sentTotal: 50000,
-      balance: 50000, // 내가 5만원 보냄 (받을 차례)
+      balance: -50000, // 내가 5만원 보냄 (받을 차례 receive_back)
       status: 'receive_back',
       lastExchangeDate: '2026-02-20',
       exchangeCount: 1,

@@ -41,37 +41,199 @@ export async function call(path, ...args) {
       }
       return list;
     }
+    case 'myevent.Service.CreateReceived': {
+      const [myEventId, name, phone, relationship, amount, paymentMethod, attendance, isThanked, memberSide, notes] = args;
+      const newRec = {
+        id: Date.now(),
+        myEventId,
+        name: (name || '').trim(),
+        phone: phone || '',
+        phoneClean: (phone || '').replace(/[^0-9]/g, ''),
+        relationship: relationship || '지인',
+        amount: Number(amount) || 0,
+        paymentMethod: paymentMethod || '현금',
+        attendance: attendance || 'attended',
+        isThanked: !!isThanked,
+        memberSide: memberSide || '신랑측',
+        notes: notes || '',
+        createdAt: new Date().toISOString(),
+      };
+      mockData.received = [newRec, ...(mockData.received || [])];
+      return newRec.id;
+    }
+    case 'sent.Service.Create': {
+      const [name, phone, relationship, eventTypeId, eventDate, amount, paymentMethod, attended, memberSide, notes] = args;
+      const typeObj = (mockData.eventTypes || []).find((t) => t.id === eventTypeId);
+      const newSent = {
+        id: Date.now(),
+        name: (name || '').trim(),
+        phone: phone || '',
+        phoneClean: (phone || '').replace(/[^0-9]/g, ''),
+        relationship: relationship || '지인',
+        eventTypeId,
+        eventTypeName: typeObj?.name || '기타',
+        eventTypeIcon: typeObj?.icon || '💌',
+        eventDate: eventDate || new Date().toISOString().slice(0, 10),
+        amount: Number(amount) || 0,
+        paymentMethod: paymentMethod || '계좌이체',
+        attended: attended !== false,
+        memberSide: memberSide || '본인',
+        notes: notes || '',
+        createdAt: new Date().toISOString(),
+      };
+      mockData.sentList = [newSent, ...(mockData.sentList || [])];
+      return newSent.id;
+    }
     case 'matching.Service.ListSummaries': {
       const filter = args[0] || 'all';
       const search = (args[1] || '').trim().toLowerCase();
-      let list = mockData.matchingSummaries || [];
-      if (filter === 'need_pay') list = list.filter((s) => s.balance > 0);
-      if (filter === 'receive_back') list = list.filter((s) => s.balance < 0);
-      if (filter === 'balanced') list = list.filter((s) => s.balance === 0);
-      if (search) list = list.filter((s) => s.name.toLowerCase().includes(search));
+      
+      // received와 sentList를 동적으로 실시간 매칭 합산
+      const map = new Map();
+      const getOrCreate = (name, phone, rel) => {
+        const cleanName = (name || '').trim();
+        const phoneClean = (phone || '').replace(/[^0-9]/g, '');
+        let found = null;
+        for (const v of map.values()) {
+          if (v.name.toLowerCase() === cleanName.toLowerCase()) {
+            if (!v.phoneClean || !phoneClean || v.phoneClean === phoneClean) {
+              found = v;
+              break;
+            }
+          }
+        }
+        if (found) {
+          if (!found.phone && phone) {
+            found.phone = phone;
+            found.phoneClean = phoneClean;
+          }
+          if ((!found.relationship || found.relationship === '지인') && rel) {
+            found.relationship = rel;
+          }
+          return found;
+        }
+        const item = {
+          name: cleanName,
+          phone: phone || '',
+          phoneClean: phoneClean,
+          relationship: rel || '지인',
+          receivedCount: 0,
+          receivedTotal: 0,
+          sentCount: 0,
+          sentTotal: 0,
+          balance: 0,
+          status: 'balanced',
+          statusText: '균형 완료',
+        };
+        map.set(cleanName + '_' + (phoneClean || 'none'), item);
+        return item;
+      };
+
+      // 1) mockData.received (내 경조사에서 받은 돈)
+      for (const r of (mockData.received || [])) {
+        if (!r.name) continue;
+        const p = getOrCreate(r.name, r.phone, r.relationship);
+        p.receivedTotal += Number(r.amount) || 0;
+        p.receivedCount += 1;
+      }
+
+      // 2) mockData.sentList (타인 경조사에 보낸 돈)
+      for (const s of (mockData.sentList || [])) {
+        if (!s.name) continue;
+        const p = getOrCreate(s.name, s.phone, s.relationship);
+        p.sentTotal += Number(s.amount) || 0;
+        p.sentCount += 1;
+      }
+
+      // 3) mockData.matchingSummaries 에만 있는 초기 데이터도 포함
+      for (const m of (mockData.matchingSummaries || [])) {
+        if (!m.name) continue;
+        const p = getOrCreate(m.name, m.phone, m.relationship);
+        if (p.receivedCount === 0 && m.receivedTotal > 0) {
+          p.receivedTotal = m.receivedTotal;
+          p.receivedCount = m.receivedCount || 1;
+        }
+        if (p.sentCount === 0 && m.sentTotal > 0) {
+          p.sentTotal = m.sentTotal;
+          p.sentCount = m.sentCount || 1;
+        }
+      }
+
+      let list = [];
+      for (const p of map.values()) {
+        p.balance = p.receivedTotal - p.sentTotal;
+        if (p.balance > 0) {
+          p.status = 'need_pay';
+          p.statusText = '갚을 차례 (받음 > 보냄)';
+        } else if (p.balance < 0) {
+          p.status = 'receive_back';
+          p.statusText = '받을 차례 (보냄 > 받음)';
+        } else {
+          p.status = 'balanced';
+          p.statusText = '균형 완료';
+        }
+
+        // 검색어 필터
+        if (search) {
+          const matchName = p.name.toLowerCase().includes(search);
+          const matchPhone = p.phone.includes(search) || p.phoneClean.includes(search);
+          const matchRel = (p.relationship || '').toLowerCase().includes(search);
+          if (!matchName && !matchPhone && !matchRel) continue;
+        }
+
+        // 상태 필터
+        if (filter === 'need_pay' && p.balance <= 0) continue;
+        if (filter === 'receive_back' && p.balance >= 0) continue;
+        if (filter === 'balanced' && p.balance !== 0) continue;
+
+        list.push(p);
+      }
       return list;
     }
     case 'matching.Service.GetPersonDetail': {
-      const name = args[0] || '';
-      const target = (mockData.matchingSummaries || []).find((s) => s.name === name) || {
-        name,
-        receivedTotal: 100000,
-        sentTotal: 50000,
-        balance: 50000,
-      };
+      const name = (args[0] || '').trim();
+      const phoneClean = (args[1] || '').replace(/[^0-9]/g, '');
+
+      // 동적으로 받은 내역 및 보낸 내역 수집
+      const recHistory = (mockData.received || [])
+        .filter((r) => r.name && r.name.trim().toLowerCase() === name.toLowerCase())
+        .map((r) => ({
+          id: r.id,
+          type: 'received',
+          eventDate: r.createdAt ? r.createdAt.slice(0, 10) : '2026-05-16',
+          eventTitle: (mockData.myEvents || []).find((e) => e.id === r.myEventId)?.title || '내 경조사',
+          amount: Number(r.amount) || 0,
+          paymentMethod: r.paymentMethod || '현금',
+          notes: r.notes || '',
+        }));
+
+      const sentHistory = (mockData.sentList || [])
+        .filter((s) => s.name && s.name.trim().toLowerCase() === name.toLowerCase())
+        .map((s) => ({
+          id: s.id,
+          type: 'sent',
+          eventDate: s.eventDate || '2026-02-20',
+          eventTitle: s.eventTypeName || '타인 경조사',
+          amount: Number(s.amount) || 0,
+          paymentMethod: s.paymentMethod || '계좌이체',
+          notes: s.notes || '',
+        }));
+
+      const recTotal = recHistory.reduce((sum, h) => sum + h.amount, 0);
+      const sentTotal = sentHistory.reduce((sum, h) => sum + h.amount, 0);
+      const balance = recTotal - sentTotal;
+
       return {
         summary: {
-          name: target.name,
-          receivedTotal: target.receivedTotal,
-          receivedCount: target.receivedTotal > 0 ? 1 : 0,
-          sentTotal: target.sentTotal,
-          sentCount: target.sentTotal > 0 ? 1 : 0,
-          balance: target.balance,
+          name,
+          phone: phoneClean,
+          receivedTotal: recTotal,
+          receivedCount: recHistory.length,
+          sentTotal: sentTotal,
+          sentCount: sentHistory.length,
+          balance,
         },
-        history: [
-          ...(target.receivedTotal > 0 ? [{ id: 1, type: 'received', eventDate: '2026-05-16', eventTitle: '우리 결혼식', amount: target.receivedTotal, notes: '직접 참석' }] : []),
-          ...(target.sentTotal > 0 ? [{ id: 2, type: 'sent', eventDate: '2026-02-20', eventTitle: '부친상 조의', amount: target.sentTotal, notes: '현금/봉투' }] : []),
-        ],
+        history: [...recHistory, ...sentHistory].sort((a, b) => (b.eventDate || '').localeCompare(a.eventDate || '')),
       };
     }
     case 'dashboard.Service.GetSummary':
